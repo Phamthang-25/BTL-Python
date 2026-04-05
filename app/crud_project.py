@@ -1,6 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
 from uuid import UUID
 
 from app import models, schemas
@@ -51,8 +53,13 @@ async def add_project_member(db: AsyncSession, project_id: UUID, member_data: sc
         project_id=project_id, user_id=member_data.user_id, role_in_project=member_data.role_in_project
     )
     db.add(db_member)
-    await db.commit()
-    await db.refresh(db_member)
+    try:
+        await db.commit()
+        await db.refresh(db_member)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Lỗi: Khóa dữ liệu (ID Thành viên không tồn tại hoặc đã có trong danh sách).")
+        
     stmt = select(models.ProjectMember).options(selectinload(models.ProjectMember.user)).where(
         models.ProjectMember.project_id == project_id, models.ProjectMember.user_id == member_data.user_id
     )
@@ -67,8 +74,12 @@ async def get_project_members(db: AsyncSession, project_id: UUID):
 async def add_publication(db: AsyncSession, project_id: UUID, pub_data: schemas.PublicationCreate):
     db_pub = models.Publication(**pub_data.model_dump(), project_id=project_id)
     db.add(db_pub)
-    await db.commit()
-    await db.refresh(db_pub)
+    try:
+        await db.commit()
+        await db.refresh(db_pub)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Lỗi CSDL: Khai báo ấn phẩm không thành công.")
     return db_pub
 
 async def get_project_publications(db: AsyncSession, project_id: UUID):
