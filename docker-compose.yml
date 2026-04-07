@@ -9,16 +9,12 @@ services:
       POSTGRES_PASSWORD: your_password
       POSTGRES_DB: science_manager
     volumes:
-      # Mount volume để giữ dữ liệu DB không bị mất khi container restart
       - postgres_data:/var/lib/postgresql/data
-      # Mount sẵn file init.sql đã sinh ra ở bước trước để Database tự tạo schema luôn
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     expose:
-      # Giới hạn cổng 5432 chỉ cho mạng nội bộ container
       - 5432
     networks:
       - science_net
-    # Thiết lập Healthcheck kiểm tra lúc nào Postgres thực sự sẵn sàng nhận kết nối
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d science_manager"]
       interval: 5s
@@ -27,20 +23,16 @@ services:
 
   backend:
     build:
-      context: .
+      context: ./app
       dockerfile: Dockerfile
     container_name: science_backend
-    env_file:
-      - .env
     environment:
-      # Chuyển localhost thành service name 'db' để Docker DNS giải quyết routing
-      DATABASE_URL: postgresql+asyncpg://postgres:your_password@db:5432/science_manager
+      DATABASE_URL: postgresql://postgres:your_password@db:5432/science_manager
     ports:
-      # Map cổng 8000 của Web service ra máy host 
       - "8000:8000"
     depends_on:
       db:
-        condition: service_healthy # Chỉ chạy Backend khi DB đã pass healthcheck
+        condition: service_healthy
     networks:
       - science_net
 
@@ -56,7 +48,6 @@ services:
     networks:
       - science_net
 
-# Đăng ký danh sách volumes và networks
 volumes:
   postgres_data:
 networks:

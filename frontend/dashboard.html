@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - NCKH</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-light">
+    <nav class="navbar shadow-sm">
+        <div class="nav-brand">Dashboard <span id="userRoleBadge" class="badge"></span></div>
+        <div class="nav-user">
+            Xin chào, <b id="userNameLabel"></b>! 
+            <button class="btn btn-sm" onclick="logout()">Đăng xuất</button>
+        </div>
+    </nav>
+
+    <div class="container" style="margin-top: 30px;">
+        <!-- KHI BẤM VÀO ĐÂY ADMIN MỚI THẤY -->
+        <div id="adminPanel" class="card shadow panel-hidden" style="margin-bottom: 20px;">
+            <h3>Quản trị Hệ thống</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-primary btn-sm" onclick="fetchUsers()">Xem Người dùng</button>
+            </div>
+            <div id="usersListContent"></div>
+        </div>
+
+        <!-- TEACHER THẤY -->
+        <div id="teacherPanel" class="card shadow panel-hidden" style="margin-bottom: 20px;">
+            <h3>Khu vực Giảng viên</h3>
+            <button class="btn btn-success btn-sm" onclick="document.getElementById('addProjectForm').style.display='block'">+ Tạo đề tài mới</button>
+            
+            <div id="addProjectForm" style="display:none; margin-top: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                <input type="text" id="newTitle" placeholder="Tên đề tài..." class="form-control" style="margin-bottom:10px;">
+                <input type="date" id="newDate" class="form-control" style="margin-bottom:10px;">
+                <button class="btn btn-primary btn-sm" onclick="createProject()">Lưu lại</button>
+                <button class="btn btn-sm" onclick="document.getElementById('addProjectForm').style.display='none'">Hủy</button>
+            </div>
+        </div>
+
+        <!-- CHUNG: DANH SÁCH ĐỀ TÀI -->
+        <div class="card shadow">
+            <h3>Danh sách Đề tài</h3>
+            <table class="table" id="projectsTable">
+                <thead>
+                    <tr>
+                        <th>Tên Đề tài</th>
+                        <th>Chủ nhiệm</th>
+                        <th>Bắt đầu</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="projectsBody">
+                    <!-- Javascript sẽ đổ dữ liệu vào đây -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- YÊU CẦU THAM GIA ĐỀ TÀI (CHỈ GV THẤY KHI BẤM XEM) -->
+        <div id="requestsPanel" class="card shadow panel-hidden" style="margin-top: 20px;">
+            <h3>Yêu cầu tham gia đề tài</h3>
+            <div id="requestsBody"></div>
+        </div>
+
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script>
+        // Khi trang web này tải lên, kiểm tra đăng nhập ngay lập tức
+        document.addEventListener("DOMContentLoaded", checkAuthAndLoadData);
+    </script>
+</body>
+</html>

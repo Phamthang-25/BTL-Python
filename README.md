@@ -1,49 +1,79 @@
-# Hệ Thống Quản Lý Đề Tài NCKH và Hoạt Động Khoa Học
-**Dự án Bài Tập Lớn (BTL) - Khoa An toàn Thông tin**
+# Hệ Thống Quản Lý Đề Tài Nghiên cứu Khoa học (NCKH)
+**Dự án Bài Tập Lớn (BTL) - Tái cấu trúc đơn giản cho người mới bắt đầu**
 
-Dự án là một hệ thống Website Full-Stack quản trị vòng đời đề tài nghiên cứu khoa học, gán quyền truy cập Role-Based Access Control (RBAC) nghiêm ngặt và kiến trúc chịu tải với Docker.
+Dự án là một hệ thống Website Full-Stack tối giản giúp quản lý vòng đời đề tài nghiên cứu khoa học, phân quyền rõ ràng giữa Admin, Giảng viên và Sinh viên.
 
-## Công Nghệ Sử Dụng
+## Công Nghệ Sử Dụng (Tối Giản)
 
-- **Backend Logic**: Pytgon 3.10+, FastAPI, Pydantic, Passlib (Bcrypt hashing)
-- **Cơ Sở Dữ Liệu**: Tiêu chuẩn RDBMS PostgreSQL (thông qua `asyncpg` chặn Error native), SQLAlchemy (Async ORM).
-- **Frontend Panel**: React 18, Vite, Axios Interceptors (JWT Token Auth), Vanilla CSS, Lucide-Icons.
-- **Microservices Deployment**: Docker, Docker Compose (Tự động khởi tạo mạng cô lập).
-
----
-
-## Phân Quyền Hệ Thống (RBAC Layers)
-
-Hệ thống cung cấp trải nghiệm UI và API giới hạn theo Role quy chuẩn:
-
-| Quyền Hạn | ADMIN (Quản Trị) | TEACHER (Giảng Viên) | STUDENT (Sinh Viên) |
-| :--- | :--- | :--- | :--- |
-| **Xem bảng Đề Tài** | Đầy đủ | Đầy đủ | Chỉ Đọc (Read-Only) |
-| **Đăng ký mới** | Bật | Bật | Bị Tước API / Ẩn Nút |
-| **Quản trị Nhân sự** | Mọi Dự án | Chỉ Dự án sở hữu (`leader_id`) | Bị Cấm Truy cập |
-| **Khai báo Bài Báo** | Mọi Dự án | Chỉ Dự án sở hữu (`leader_id`) | Bị Cấm Truy cập |
-| **Xóa Mềm (Delete)** | **ON** | OFF | OFF |
+- **Backend**: Python 3.10+, **Flask** (Framework siêu nhẹ), **psycopg2** (Viết câu lệnh SQL thuần túy - Raw SQL).
+- **Cơ Sở Dữ Liệu**: **PostgreSQL** 15.
+- **Frontend**: **Vanilla HTML, CSS, JavaScript** (Không dùng framework phức tạp, dễ đọc, dễ sửa).
+- **Deployment**: **Docker** & **Docker Compose** (Chạy toàn bộ hệ thống chỉ với 1 câu lệnh).
 
 ---
 
-## Hướng Dẫn Cài Đặt Khởi Chạy
+## Cấu Trúc Thư Mục
 
-Toàn bộ hệ thống chạy chia tách Backend (trong Container) và Frontend (Dev Local) vô cùng linh hoạt. 
-
-### Khởi động Frontend + Backend + DB bằng Docker
-Di chuyển Terminal vào thư mục chứa `docker-compose.yml` (Thư mục gốc) và chạy:
-```bash
-docker compose up -d --build
+```text
+BTL-PY/
+├── app/                # Backend Flask
+│   ├── main.py         # Điểm khởi chạy chính
+│   ├── auth.py         # Chức năng Đăng nhập
+│   ├── projects.py     # Chức năng Quản lý Đề tài
+│   ├── users.py        # Chức năng Admin quản lý người dùng
+│   ├── db.py           # Kết nối Cơ sở dữ liệu
+│   ├── Dockerfile      # Cấu hình Docker cho Flask
+│   └── requirements.txt
+├── frontend/           # Frontend Vanilla JS
+│   ├── css/            # Giao diện (style.css)
+│   ├── js/             # Logic xử lý (app.js)
+│   ├── index.html      # Trang giới thiệu
+│   ├── login.html      # Trang đăng nhập
+│   ├── dashboard.html  # Trang chính (Dynamic theo Role)
+│   └── Dockerfile      # Cấu hình Nginx để phục vụ file tĩnh
+├── init.sql            # Tạo bảng và Dữ liệu mẫu (Seed Data)
+└── docker-compose.yml  # File điều phối toàn bộ hệ thống
 ```
-> **Lưu ý**: Lệnh này tự động tải Image Postgres+Python, lập tức kết nối và nạp Seed Data. Sau ~20 giây, Backend sẽ đứng đợi tại địa chỉ `http://localhost:8000`. API Docs có tại `http://localhost:8000/docs`.
 
 ---
 
-## Mẫu Tài Khoản (Seed Data)
-Cơ sở dữ liệu tự nạp sẵn cho Giám khảo 3 Tài khoản kiểm thử thuộc 3 Tầng Quyền:
+## Hướng Dẫn Khởi Chạy
 
-1. **`admin`** | Mật khẩu: `admin123` *(Full quyền, Quyền chém dự án)*
-2. **`teacher1`** | Mật khẩu: `admin123` *(Lãnh chúa vùng không gian riêng: Menu Cập nhật đề tài cá nhân)*
-3. **`student1`** | Mật khẩu: `admin123` *(Menu bị giấu bớt, Trải nghiệm tham quan 100% Thuần túy View-Only)*
+Bạn cần cài đặt **Docker** và **Docker Desktop** trên máy tính.
+
+1. **Mở Terminal/PowerShell** tại thư mục gốc của dự án.
+2. **Chạy lệnh xây dựng và khởi động**:
+   ```bash
+   docker compose up --build -d
+   ```
+3. **Truy cập ứng dụng**:
+   - Giao diện người dùng: [http://localhost](http://localhost)
+   - API Backend (Nếu muốn test Postman): [http://localhost:8000](http://localhost:8000)
 
 ---
+
+## Tài Khoản Thử Nghiệm
+
+Hệ thống đã nạp sẵn các tài khoản sau để bạn kiểm tra các quyền (Role):
+
+| Role | Username | Password | Chức năng chính |
+| :--- | :--- | :--- | :--- |
+| **ADMIN** | `admin` | `admin123` | Quản lý người dùng, Duyệt/Hủy đề tài toàn hệ thống. |
+| **TEACHER** | `teacher1` | `123456` | Tạo đề tài, Duyệt sinh viên tham gia đề tài của mình. |
+| **STUDENT** | `student1` | `123456` | Xem danh sách đề tài, Gửi yêu cầu tham gia. |
+
+---
+
+## Các Chức Năng Chính Theo Role
+
+- **Admin**:
+  - Xem thống kê và toàn bộ danh sách đề tài.
+  - Thay đổi trạng thái đề tài (Duyệt/Hủy bỏ).
+  - Quản lý tài khoản (Thêm/Xóa Giảng viên, Sinh viên).
+- **Giảng viên (Teacher)**:
+  - Thêm, sửa, xóa các đề tài do mình hướng dẫn.
+  - Phê duyệt sinh viên gửi yêu cầu tham gia đề tài.
+- **Sinh viên (Student)**:
+  - Xem các đề tài nghiên cứu đang có.
+  - Gửi yêu cầu tham gia đề tài cho giảng viên.
+  - Xem trạng thái yêu cầu (Đã duyệt/Từ chối).
