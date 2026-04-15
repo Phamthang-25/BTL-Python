@@ -1,13 +1,14 @@
 """FastAPI dependencies for authentication and authorization."""
 
-from fastapi import Depends, Header
+from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.core.security import decode_access_token
 from app.core.exceptions import CredentialsException, ForbiddenException
 from app.models.user import User
+from app.models.role import Role
 
 security_scheme = HTTPBearer()
 
@@ -25,7 +26,12 @@ async def get_current_user(
     if user_id is None:
         raise CredentialsException()
 
-    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    user = (
+        db.query(User)
+        .options(joinedload(User.role_rel), joinedload(User.department))
+        .filter(User.id == user_id, User.is_active == True)
+        .first()
+    )
     if user is None:
         raise CredentialsException()
 

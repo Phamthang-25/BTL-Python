@@ -7,12 +7,30 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.user import User
+from app.models.role import Role
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse
 from app.core.security import hash_password
 from app.core.dependencies import require_roles
 from app.core.exceptions import NotFoundException, BadRequestException
 
 router = APIRouter(prefix="/users", tags=["User Management"])
+
+
+def _user_to_response(user: User) -> UserResponse:
+    """Convert User model to response schema."""
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        phone=user.phone,
+        department_id=user.department_id,
+        academic_rank=user.academic_rank,
+        academic_title=user.academic_title,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        department_name=user.department.name if user.department else None,
+    )
 
 
 @router.get("/", response_model=UserListResponse)
@@ -25,29 +43,20 @@ async def list_users(
     db: Session = Depends(get_db),
 ):
     """List all users with pagination and optional filters."""
-    query = db.query(User).options(joinedload(User.department))
+    query = db.query(User).options(joinedload(User.role_rel), joinedload(User.department))
 
     if role:
-        query = query.filter(User.role == role)
+        query = query.join(User.role_rel).filter(Role.code == role)
     if search:
         query = query.filter(
             (User.full_name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
         )
 
     total = query.count()
-    users = query.offset((page - 1) * size).limit(size).all()
+    users = query.order_by(User.created_at.desc()).offset((page - 1) * size).limit(size).all()
 
     return UserListResponse(
-        items=[
-            UserResponse(
-                id=u.id, email=u.email, full_name=u.full_name, phone=u.phone,
-                department_id=u.department_id, academic_rank=u.academic_rank,
-                academic_title=u.academic_title, role=u.role, is_active=u.is_active,
-                created_at=u.created_at,
-                department_name=u.department.name if u.department else None,
-            )
-            for u in users
-        ],
+        items=[_user_to_response(u) for u in users],
         total=total, page=page, size=size,
     )
 
@@ -63,6 +72,11 @@ async def create_user(
     if existing:
         raise BadRequestException("Email đã tồn tại trong hệ thống")
 
+    # Resolve role code to role_id
+    role_obj = db.query(Role).filter(Role.code == body.role).first()
+    if not role_obj:
+        raise BadRequestException(f"Vai trò '{body.role}' không hợp lệ")
+
     user = User(
         email=body.email,
         hashed_password=hash_password(body.password),
@@ -71,18 +85,15 @@ async def create_user(
         department_id=body.department_id,
         academic_rank=body.academic_rank,
         academic_title=body.academic_title,
-        role=body.role,
+        role_id=role_obj.id,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    return UserResponse(
-        id=user.id, email=user.email, full_name=user.full_name, phone=user.phone,
-        department_id=user.department_id, academic_rank=user.academic_rank,
-        academic_title=user.academic_title, role=user.role, is_active=user.is_active,
-        created_at=user.created_at, department_name=None,
-    )
+    # Reload with relationships
+    user = db.query(User).options(joinedload(User.role_rel), joinedload(User.department)).filter(User.id == user.id).first()
+    return _user_to_response(user)
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -92,17 +103,15 @@ async def get_user(
     db: Session = Depends(get_db),
 ):
     """Get user by ID."""
-    user = db.query(User).options(joinedload(User.department)).filter(User.id == user_id).first()
+    user = (
+        db.query(User)
+        .options(joinedload(User.role_rel), joinedload(User.department))
+        .filter(User.id == user_id)
+        .first()
+    )
     if not user:
         raise NotFoundException("Người dùng")
-
-    return UserResponse(
-        id=user.id, email=user.email, full_name=user.full_name, phone=user.phone,
-        department_id=user.department_id, academic_rank=user.academic_rank,
-        academic_title=user.academic_title, role=user.role, is_active=user.is_active,
-        created_at=user.created_at,
-        department_name=user.department.name if user.department else None,
-    )
+    return _user_to_response(user)
 
 
 @router.put("/{user_id}", response_model=UserResponse)
@@ -113,21 +122,31 @@ async def update_user(
     db: Session = Depends(get_db),
 ):
     """Update an existing user."""
-    user = db.query(User).options(joinedload(User.department)).filter(User.id == user_id).first()
+    user = (
+        db.query(User)
+        .options(joinedload(User.role_rel), joinedload(User.department))
+        .filter(User.id == user_id)
+        .first()
+    )
     if not user:
         raise NotFoundException("Người dùng")
 
     update_data = body.model_dump(exclude_unset=True)
+
+    # Handle role update specially — convert role code to role_id
+    if "role" in update_data:
+        role_code = update_data.pop("role")
+        role_obj = db.query(Role).filter(Role.code == role_code).first()
+        if not role_obj:
+            raise BadRequestException(f"Vai trò '{role_code}' không hợp lệ")
+        user.role_id = role_obj.id
+
     for field, value in update_data.items():
         setattr(user, field, value)
 
     db.commit()
     db.refresh(user)
 
-    return UserResponse(
-        id=user.id, email=user.email, full_name=user.full_name, phone=user.phone,
-        department_id=user.department_id, academic_rank=user.academic_rank,
-        academic_title=user.academic_title, role=user.role, is_active=user.is_active,
-        created_at=user.created_at,
-        department_name=user.department.name if user.department else None,
-    )
+    # Reload relationships
+    user = db.query(User).options(joinedload(User.role_rel), joinedload(User.department)).filter(User.id == user.id).first()
+    return _user_to_response(user)

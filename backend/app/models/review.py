@@ -1,9 +1,9 @@
-"""Review model for proposal reviews."""
+"""Review model — individual reviewer scores for proposals."""
 
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, Text, Float, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, Numeric, DateTime, ForeignKey, CheckConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -12,15 +12,19 @@ from app.database import Base
 
 class Review(Base):
     __tablename__ = "reviews"
+    __table_args__ = (
+        UniqueConstraint("council_id", "reviewer_id", name="uq_review_per_council"),
+        CheckConstraint("score BETWEEN 0 AND 100", name="ck_review_score"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    council_id = Column(UUID(as_uuid=True), ForeignKey("councils.id"), nullable=False)
-    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    proposal_id = Column(UUID(as_uuid=True), ForeignKey("proposals.id"), nullable=False)
-    score = Column(Float, nullable=True)  # 0-100
+    council_id = Column(UUID(as_uuid=True), ForeignKey("councils.id", ondelete="CASCADE"), nullable=False)
+    reviewer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
+    proposal_id = Column(UUID(as_uuid=True), ForeignKey("proposals.id", ondelete="RESTRICT"), nullable=False)
+    score = Column(Numeric(5, 2), nullable=True)  # 0-100
     comments = Column(Text, nullable=True)
     verdict = Column(String(20), nullable=True)  # PASS, FAIL, NEEDS_REVISION
-    status = Column(String(20), nullable=False, default="PENDING")  # PENDING, SUBMITTED
+    status = Column(String(20), nullable=False, default="PENDING", index=True)  # PENDING, SUBMITTED
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

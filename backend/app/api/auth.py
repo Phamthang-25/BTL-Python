@@ -1,10 +1,11 @@
 """Authentication endpoints: login, profile, change password."""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.user import User
+from app.models.role import Role
 from app.schemas.auth import LoginRequest, TokenResponse, ChangePasswordRequest
 from app.schemas.user import UserResponse
 from app.core.security import verify_password, hash_password, create_access_token
@@ -17,7 +18,12 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate user and return JWT token."""
-    user = db.query(User).filter(User.email == body.email).first()
+    user = (
+        db.query(User)
+        .options(joinedload(User.role_rel))
+        .filter(User.email == body.email)
+        .first()
+    )
     if not user or not verify_password(body.password, user.hashed_password):
         raise CredentialsException()
     if not user.is_active:

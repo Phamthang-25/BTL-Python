@@ -1,5 +1,8 @@
 """Seed realistic Vietnamese university data for demo purposes.
 
+Seeds: roles, departments, research fields, proposal categories,
+       approval steps, users, and registration periods.
+
 Run standalone: python -m app.seed.seed_data
 """
 
@@ -9,8 +12,10 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from app.database import SessionLocal, engine, Base
+from app.models.role import Role
 from app.models.user import User
-from app.models.catalog import Department, ResearchField
+from app.models.catalog import Department, ResearchField, ProposalCategory
+from app.models.approval import ApprovalStep
 from app.models.period import RegistrationPeriod
 from app.core.security import hash_password
 from datetime import date
@@ -18,19 +23,31 @@ from datetime import date
 
 def seed():
     """Insert seed data into the database."""
-    # Create all tables if they don't exist
+    # Create all tables if they don't exist (fallback if migrations not run)
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
     try:
         # Skip if data already exists
-        if db.query(User).first():
+        if db.query(Role).first():
             print("⚠️  Database already has data, skipping seed.")
             return
 
         print("🌱 Seeding database...")
 
-        # ── Departments ──────────────────────────────────────────
+        # ── 1. Roles ─────────────────────────────────────────
+        roles = {
+            "ADMIN": Role(code="ADMIN", name="Quản trị viên", description="Quản trị hệ thống", sort_order=1),
+            "STAFF": Role(code="STAFF", name="Phòng KHCN", description="Cán bộ Phòng Khoa học Công nghệ", sort_order=2),
+            "LEADERSHIP": Role(code="LEADERSHIP", name="Lãnh đạo", description="Ban Giám hiệu / Lãnh đạo trường", sort_order=3),
+            "FACULTY": Role(code="FACULTY", name="Giảng viên", description="Giảng viên / Nghiên cứu viên", sort_order=4),
+            "REVIEWER": Role(code="REVIEWER", name="Phản biện", description="Thành viên hội đồng phản biện", sort_order=5),
+        }
+        db.add_all(roles.values())
+        db.flush()
+        print(f"  ✅ {len(roles)} roles")
+
+        # ── 2. Departments ───────────────────────────────────
         departments = [
             Department(name="Khoa Công nghệ Thông tin", code="CNTT"),
             Department(name="Khoa Điện - Điện tử", code="DDE"),
@@ -45,7 +62,7 @@ def seed():
         db.flush()
         print(f"  ✅ {len(departments)} departments")
 
-        # ── Research Fields ──────────────────────────────────────
+        # ── 3. Research Fields ───────────────────────────────
         fields = [
             ResearchField(name="Trí tuệ nhân tạo", code="AI"),
             ResearchField(name="Internet vạn vật", code="IOT"),
@@ -62,7 +79,60 @@ def seed():
         db.flush()
         print(f"  ✅ {len(fields)} research fields")
 
-        # ── Users ────────────────────────────────────────────────
+        # ── 4. Proposal Categories ───────────────────────────
+        categories = [
+            ProposalCategory(
+                name="Đề tài cấp trường",
+                code="CAP_TRUONG",
+                level="UNIVERSITY",
+                max_duration_months=12,
+                description="Đề tài nghiên cứu khoa học cấp trường, tài trợ bởi ngân sách trường",
+            ),
+            ProposalCategory(
+                name="Đề tài cấp khoa",
+                code="CAP_KHOA",
+                level="FACULTY",
+                max_duration_months=6,
+                description="Đề tài nghiên cứu cấp khoa/bộ môn",
+            ),
+            ProposalCategory(
+                name="Đề tài cấp bộ",
+                code="CAP_BO",
+                level="MINISTERIAL",
+                max_duration_months=24,
+                description="Đề tài nghiên cứu cấp bộ/ngành",
+            ),
+        ]
+        db.add_all(categories)
+        db.flush()
+        print(f"  ✅ {len(categories)} proposal categories")
+
+        # ── 5. Approval Steps ────────────────────────────────
+        steps = [
+            ApprovalStep(
+                step_code="STAFF_VALIDATE",
+                step_name="Kiểm tra tính hợp lệ",
+                required_role="STAFF",
+                step_order=1,
+            ),
+            ApprovalStep(
+                step_code="COUNCIL_REVIEW",
+                step_name="Phản biện hội đồng",
+                required_role="REVIEWER",
+                step_order=2,
+            ),
+            ApprovalStep(
+                step_code="LEADERSHIP_APPROVE",
+                step_name="Phê duyệt lãnh đạo",
+                required_role="LEADERSHIP",
+                step_order=3,
+            ),
+        ]
+        db.add_all(steps)
+        db.flush()
+        print(f"  ✅ {len(steps)} approval steps")
+
+        # ── 6. Users ─────────────────────────────────────────
         default_pw = hash_password("password123")
 
         users = [
@@ -71,7 +141,7 @@ def seed():
                 email="admin@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Nguyễn Quản Trị",
-                role="ADMIN",
+                role_id=roles["ADMIN"].id,
                 department_id=departments[0].id,
             ),
             # S&T Staff
@@ -79,16 +149,24 @@ def seed():
                 email="staff@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Trần Thị Phòng KHCN",
-                role="STAFF",
+                role_id=roles["STAFF"].id,
                 department_id=departments[0].id,
                 phone="0901234567",
+            ),
+            User(
+                email="staff2@university.edu.vn",
+                hashed_password=default_pw,
+                full_name="Lý Văn Khoa Học",
+                role_id=roles["STAFF"].id,
+                department_id=departments[0].id,
+                phone="0901234568",
             ),
             # Leadership
             User(
                 email="leader@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Phạm Văn Lãnh Đạo",
-                role="LEADERSHIP",
+                role_id=roles["LEADERSHIP"].id,
                 academic_rank="Giáo sư",
                 academic_title="Tiến sĩ",
                 department_id=departments[0].id,
@@ -99,7 +177,7 @@ def seed():
                 email="faculty1@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Lê Văn Nghiên Cứu",
-                role="FACULTY",
+                role_id=roles["FACULTY"].id,
                 academic_rank="Phó Giáo sư",
                 academic_title="Tiến sĩ",
                 department_id=departments[0].id,
@@ -109,7 +187,7 @@ def seed():
                 email="faculty2@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Hoàng Thị Khoa Học",
-                role="FACULTY",
+                role_id=roles["FACULTY"].id,
                 academic_rank="Giảng viên",
                 academic_title="Thạc sĩ",
                 department_id=departments[1].id,
@@ -119,18 +197,28 @@ def seed():
                 email="faculty3@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Ngô Minh Dữ Liệu",
-                role="FACULTY",
+                role_id=roles["FACULTY"].id,
                 academic_rank="Giảng viên chính",
                 academic_title="Tiến sĩ",
                 department_id=departments[0].id,
                 phone="0945678901",
+            ),
+            User(
+                email="faculty4@university.edu.vn",
+                hashed_password=default_pw,
+                full_name="Đinh Thị Sáng Tạo",
+                role_id=roles["FACULTY"].id,
+                academic_rank="Giảng viên",
+                academic_title="Thạc sĩ",
+                department_id=departments[3].id,
+                phone="0956789013",
             ),
             # Reviewers
             User(
                 email="reviewer1@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Đặng Phản Biện",
-                role="REVIEWER",
+                role_id=roles["REVIEWER"].id,
                 academic_rank="Phó Giáo sư",
                 academic_title="Tiến sĩ",
                 department_id=departments[1].id,
@@ -140,29 +228,39 @@ def seed():
                 email="reviewer2@university.edu.vn",
                 hashed_password=default_pw,
                 full_name="Vũ Thị Đánh Giá",
-                role="REVIEWER",
+                role_id=roles["REVIEWER"].id,
                 academic_rank="Giáo sư",
                 academic_title="Tiến sĩ",
                 department_id=departments[2].id,
                 phone="0967890123",
+            ),
+            User(
+                email="reviewer3@university.edu.vn",
+                hashed_password=default_pw,
+                full_name="Bùi Chuyên Gia",
+                role_id=roles["REVIEWER"].id,
+                academic_rank="Phó Giáo sư",
+                academic_title="Tiến sĩ",
+                department_id=departments[0].id,
+                phone="0978901234",
             ),
         ]
         db.add_all(users)
         db.flush()
         print(f"  ✅ {len(users)} users")
 
-        # ── Registration Periods ─────────────────────────────────
+        # ── 7. Registration Periods ──────────────────────────
         periods = [
             RegistrationPeriod(
-                title="Đợt đăng ký NCKH Học kỳ 1 - 2026",
-                description="Đợt đăng ký đề tài nghiên cứu khoa học cấp trường, học kỳ 1 năm học 2025-2026",
+                title="Đợt đăng ký NCKH Học kỳ 1 — Năm học 2025-2026",
+                description="Đợt đăng ký đề tài nghiên cứu khoa học cấp trường, học kỳ 1 năm học 2025-2026. Ưu tiên các đề tài ứng dụng AI và chuyển đổi số.",
                 start_date=date(2026, 1, 15),
                 end_date=date(2026, 6, 30),
                 status="OPEN",
             ),
             RegistrationPeriod(
-                title="Đợt đăng ký NCKH Học kỳ 2 - 2026",
-                description="Đợt đăng ký đề tài nghiên cứu khoa học cấp trường, học kỳ 2 năm học 2025-2026",
+                title="Đợt đăng ký NCKH Học kỳ 2 — Năm học 2025-2026",
+                description="Đợt đăng ký đề tài nghiên cứu khoa học cấp trường, học kỳ 2 năm học 2025-2026.",
                 start_date=date(2026, 7, 1),
                 end_date=date(2026, 12, 31),
                 status="DRAFT",
@@ -173,14 +271,20 @@ def seed():
         print(f"  ✅ {len(periods)} registration periods")
 
         db.commit()
+        print()
         print("🎉 Seed data inserted successfully!")
         print()
-        print("📋 Demo accounts (password: password123):")
-        print("   Admin:      admin@university.edu.vn")
-        print("   Staff:      staff@university.edu.vn")
-        print("   Leadership: leader@university.edu.vn")
-        print("   Faculty:    faculty1@university.edu.vn")
-        print("   Reviewer:   reviewer1@university.edu.vn")
+        print("┌─────────────────────────────────────────────────┐")
+        print("│  📋 Demo Accounts (password: password123)       │")
+        print("├─────────────────────────────────────────────────┤")
+        print("│  Admin:       admin@university.edu.vn           │")
+        print("│  Staff:       staff@university.edu.vn           │")
+        print("│  Leadership:  leader@university.edu.vn          │")
+        print("│  Faculty:     faculty1@university.edu.vn        │")
+        print("│  Faculty:     faculty2@university.edu.vn        │")
+        print("│  Reviewer:    reviewer1@university.edu.vn       │")
+        print("│  Reviewer:    reviewer2@university.edu.vn       │")
+        print("└─────────────────────────────────────────────────┘")
 
     except Exception as e:
         db.rollback()
