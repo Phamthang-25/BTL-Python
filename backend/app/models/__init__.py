@@ -14,6 +14,7 @@ from app.models.approval import ApprovalStep, ApprovalHistory
 from app.models.progress import ProgressReport
 from app.models.acceptance import AcceptanceDossier, AcceptanceReview
 from app.models.publication import Publication
+from app.models.audit import LoginLog
 
 __all__ = [
     "Role",
@@ -34,4 +35,6 @@ __all__ = [
     "AcceptanceDossier",
     "AcceptanceReview",
     "Publication",
+    "LoginLog",
 ]
+

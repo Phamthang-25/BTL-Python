@@ -4,19 +4,54 @@ const API = (() => {
   const BASE = window.API_BASE || 'http://localhost:8000/api';
 
   function token() { return localStorage.getItem('scires_token'); }
-  function setToken(t) { localStorage.setItem('scires_token', t); }
-  function clearToken() { localStorage.removeItem('scires_token'); localStorage.removeItem('scires_user'); }
+  function refreshToken() { return localStorage.getItem('scires_refresh_token'); }
+  function setToken(t, r) { 
+    if(t) localStorage.setItem('scires_token', t); 
+    if(r) localStorage.setItem('scires_refresh_token', r); 
+  }
+  function clearToken() { 
+    localStorage.removeItem('scires_token'); 
+    localStorage.removeItem('scires_refresh_token'); 
+    localStorage.removeItem('scires_user'); 
+  }
   function getUser() { try { return JSON.parse(localStorage.getItem('scires_user')); } catch { return null; } }
   function setUser(u) { localStorage.setItem('scires_user', JSON.stringify(u)); }
 
-  async function request(method, path, body) {
+  async function request(method, path, body, isRetry = false) {
     const headers = { 'Content-Type': 'application/json' };
     const t = token();
     if (t) headers['Authorization'] = `Bearer ${t}`;
-    const res = await fetch(BASE + path, {
+    
+    let res = await fetch(BASE + path, {
       method, headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    
+    // Auto refresh logic
+    if (res.status === 401 && !isRetry && path !== '/auth/login' && path !== '/auth/refresh') {
+      const rToken = refreshToken();
+      if (rToken) {
+        try {
+          const refreshRes = await fetch(BASE + '/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: rToken })
+          });
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            setToken(refreshData.access_token, refreshData.refresh_token);
+            // Retry request
+            return request(method, path, body, true);
+          }
+        } catch (e) {
+          console.error('Failed to refresh token', e);
+        }
+      }
+      clearToken();
+      location.href = '/';
+      throw new Error('Phiên đăng nhập đã hết hạn.');
+    }
+    
     if (res.status === 204) return null;
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
@@ -32,7 +67,7 @@ const API = (() => {
 
     login: async (email, password) => {
       const data = await request('POST', '/auth/login', { email, password });
-      setToken(data.access_token);
+      setToken(data.access_token, data.refresh_token);
       const me = await request('GET', '/auth/me');
       setUser(me);
       return me;

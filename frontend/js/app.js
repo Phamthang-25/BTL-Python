@@ -5,14 +5,21 @@ const pages = {};
 function registerPage(id, initFn) { pages[id] = initFn; }
 
 function navigate(pageId) {
+  // Route Guard: only allow traversing to pages present in the nav (except dashboard)
+  const link = document.querySelector(`nav a[data-page="${pageId}"]`);
+  if (!link && pageId !== 'dashboard') {
+    return navigate('dashboard');
+  }
+
   document.querySelectorAll('#page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  
   const el = document.getElementById(`page-${pageId}`);
   if (el) {
     el.classList.add('active');
     el.removeAttribute('style');
   }
-  const link = document.querySelector(`nav a[data-page="${pageId}"]`);
+  
   if (link) link.classList.add('active');
   if (pages[pageId]) pages[pageId]();
 }

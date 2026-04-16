@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.core.security import decode_access_token
 from app.core.exceptions import CredentialsException, ForbiddenException
+from app.core.permissions import has_permission, Permission
 from app.models.user import User
 from app.models.role import Role
 
@@ -45,3 +46,12 @@ def require_roles(*allowed_roles: str):
             raise ForbiddenException()
         return current_user
     return role_checker
+
+
+def require_permission(permission: Permission):
+    """Dependency factory that checks if the user's role has the required permission."""
+    async def permission_checker(current_user: User = Depends(get_current_user)) -> User:
+        if not has_permission(current_user.role, permission):
+            raise ForbiddenException()
+        return current_user
+    return permission_checker

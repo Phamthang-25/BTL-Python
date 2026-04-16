@@ -1,12 +1,13 @@
 """Authentication endpoints: login, profile, change password."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas import LoginRequest, TokenResponse, ChangePasswordRequest, UserResponse
-from app.core.security import verify_password, hash_password, create_access_token
+from app.models.audit import LoginLog
+from app.schemas import LoginRequest, TokenResponse, ChangePasswordRequest, UserResponse, RefreshTokenRequest
+from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_refresh_token
 from app.core.dependencies import get_current_user
 from app.core.exceptions import CredentialsException, BadRequestException
 
@@ -14,21 +15,58 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: Session = Depends(get_db)):
-    """Authenticate user and return JWT token."""
+async def login(request: Request, body: LoginRequest, db: Session = Depends(get_db)):
+    """Authenticate user and return JWT tokens (access & refresh)."""
     user = (
         db.query(User)
         .options(joinedload(User.role_rel))
         .filter(User.email == body.email)
         .first()
     )
+
+    ip_addr = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
     if not user or not verify_password(body.password, user.hashed_password):
+        if user:
+            log = LoginLog(user_id=user.id, ip_address=ip_addr, user_agent=user_agent, is_success=False)
+            db.add(log)
+            db.commit()
         raise CredentialsException()
+
     if not user.is_active:
         raise BadRequestException("Tài khoản đã bị vô hiệu hóa")
 
+    # Log successful login
+    log = LoginLog(user_id=user.id, ip_address=ip_addr, user_agent=user_agent, is_success=True)
+    db.add(log)
+    db.commit()
+
     token = create_access_token({"sub": str(user.id), "role": user.role})
-    return TokenResponse(access_token=token)
+    refresh_token = create_refresh_token({"sub": str(user.id)})
+    
+    return TokenResponse(access_token=token, refresh_token=refresh_token)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(body: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """Refresh JWT access token using refresh token."""
+    payload = decode_refresh_token(body.refresh_token)
+    if payload is None:
+        raise CredentialsException()
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise CredentialsException()
+
+    user = db.query(User).options(joinedload(User.role_rel)).filter(User.id == user_id, User.is_active == True).first()
+    if not user:
+        raise CredentialsException()
+
+    new_access = create_access_token({"sub": str(user.id), "role": user.role})
+    new_refresh = create_refresh_token({"sub": str(user.id)})
+    
+    return TokenResponse(access_token=new_access, refresh_token=new_refresh)
 
 
 @router.get("/me", response_model=UserResponse)
