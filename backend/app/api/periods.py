@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.period import RegistrationPeriod
 from app.models.user import User
-from app.schemas import PeriodCreate, PeriodUpdate, PeriodResponse
+from app.schemas import PeriodCreate, PeriodUpdate, PeriodResponse, PeriodListResponse
 from app.core.dependencies import get_current_user, require_roles
 from app.core.exceptions import NotFoundException, BadRequestException
 
