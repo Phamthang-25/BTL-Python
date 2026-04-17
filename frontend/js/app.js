@@ -207,13 +207,13 @@ registerPage('create-proposal', async () => {
           </select></div>
           <div class="form-group"><label>Lĩnh vực *</label><select name="field_id">
             <option value="">— Chọn —</option>
-            ${fields.map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
+            ${(fields.items||[]).map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
           </select></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Loại đề tài</label><select name="category_id">
             <option value="">— Chọn —</option>
-            ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+            ${(categories.items||[]).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
           </select></div>
           <div class="form-group"><label>Thời gian (tháng) *</label><input name="duration_months" type="number" min="1" max="36"></div>
         </div>
@@ -282,10 +282,10 @@ async function editProposal(id) {
     periodSel.innerHTML = `<option value="">— Chọn —</option>` + periods.map(x => `<option value="${x.id}" ${p.period_id === x.id ? 'selected':''}>${x.title}</option>`).join('');
     
     const fieldSel = document.getElementById('edit-prop-field');
-    fieldSel.innerHTML = `<option value="">— Chọn —</option>` + fields.map(x => `<option value="${x.id}" ${p.field_id === x.id ? 'selected':''}>${x.name}</option>`).join('');
+    fieldSel.innerHTML = `<option value="">— Chọn —</option>` + (fields.items||[]).map(x => `<option value="${x.id}" ${p.field_id === x.id ? 'selected':''}>${x.name}</option>`).join('');
     
     const catSel = document.getElementById('edit-prop-category');
-    catSel.innerHTML = `<option value="">— Chọn —</option>` + categories.map(x => `<option value="${x.id}" ${p.category_id === x.id ? 'selected':''}>${x.name}</option>`).join('');
+    catSel.innerHTML = `<option value="">— Chọn —</option>` + (categories.items||[]).map(x => `<option value="${x.id}" ${p.category_id === x.id ? 'selected':''}>${x.name}</option>`).join('');
 
     openModal('modal-edit-proposal');
   } catch(e) { alert(e.message); }
