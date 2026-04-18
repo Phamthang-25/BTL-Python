@@ -950,18 +950,39 @@ function gotoMonitorPage(p) { _monitorPage = p; loadMonitorList(); }
 registerPage('my-reviews', async () => {
   const el = document.getElementById('page-my-reviews');
   el.innerHTML = `<div class="section-header"><h2>Phản biện được phân công</h2></div>
-    <div id="msg-my-reviews"></div><div id="my-reviews-list">Đang tải...</div>`;
+    <div id="msg-my-reviews"></div><div id="my-reviews-list">Đang tải danh sách...</div>`;
   try {
+    console.log('Fetching my reviews from /api/reviews/my...');
     const reviews = await API.get('/reviews/my');
+    console.log('Reviews received:', reviews);
+    
     const el2 = document.getElementById('my-reviews-list');
-    if (!reviews.length) { el2.innerHTML = '<p class="empty">Chưa có phân công.</p>'; return; }
+    if (!reviews || !reviews.length) { 
+      el2.innerHTML = '<p class="empty">Bạn hiện không có đề tài nào được phân công phản biện.</p>'; 
+      return; 
+    }
+    
     el2.innerHTML = `<table>
-      <thead><tr><th>Đề tài</th><th>Trạng thái</th><th>Điểm</th><th>Thao tác</th></tr></thead>
+      <thead><tr><th>Tên đề tài</th><th>Trạng thái</th><th>Điểm</th><th>Thao tác</th></tr></thead>
       <tbody>${reviews.map(r => `<tr>
-        <td title="${r.proposal_id}">${r.proposal_title || '—'}</td><td>${badge(r.status)}</td><td>${r.score||'—'}</td>
-        <td>${r.status === 'PENDING' ? `<button class="btn btn-sm btn-primary" onclick="openSubmitReview('${r.council_id}','${r.proposal_id}')">Nộp đánh giá</button>` : '—'}</td>
+        <td title="${r.proposal_id}">${r.proposal_title || 'N/A'}</td>
+        <td>${badge(r.status)}</td>
+        <td>${r.score || '—'}</td>
+        <td>
+          ${r.status === 'PENDING' ? 
+            `<button class="btn btn-sm btn-primary" onclick="openSubmitReview('${r.council_id}','${r.proposal_id}')">Nộp đánh giá</button>` : 
+            `<button class="btn btn-sm btn-secondary" onclick="viewProposal('${r.proposal_id}')">Xem lại</button>`
+          }
+        </td>
       </tr>`).join('')}</tbody></table>`;
-  } catch(e) { document.getElementById('my-reviews-list').innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
+  } catch(e) {
+    console.error('My Reviews Page Error:', e);
+    document.getElementById('my-reviews-list').innerHTML = `
+      <div class="alert alert-error">
+        <p><b>Lỗi kết nối:</b> ${e.message}</p>
+        <p style="font-size:12px; margin-top:8px">Vui lòng kiểm tra xem Server Backend (port 8000) có đang hoạt động không.</p>
+      </div>`;
+  }
 });
 
 let _reviewCtx = {};

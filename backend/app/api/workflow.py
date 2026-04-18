@@ -1,6 +1,7 @@
 """Workflow endpoints: Reviews, Progress Reports, and Acceptance Dossiers."""
 
 from datetime import datetime, timezone
+from typing import List, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -48,7 +49,7 @@ async def submit_review(
     """Submit a review score. Auto-completes council → REVIEWED when all done."""
     review = (
         db.query(Review)
-        .options(joinedload(Review.reviewer))
+        .options(joinedload(Review.reviewer), joinedload(Review.proposal))
         .filter(
             Review.council_id == body.council_id,
             Review.proposal_id == body.proposal_id,
@@ -84,16 +85,16 @@ async def submit_review(
     review = db.query(Review).options(joinedload(Review.reviewer), joinedload(Review.proposal)).filter(Review.id == review.id).first()
     return ReviewResponse(
         id=review.id, council_id=review.council_id, proposal_id=review.proposal_id,
-        proposal_title=review.proposal.title if review.proposal else None,
+        proposal_title=review.proposal.title if review.proposal else "N/A",
         reviewer_id=review.reviewer_id,
-        reviewer_name=review.reviewer.full_name if review.reviewer else None,
+        reviewer_name=review.reviewer.full_name if review.reviewer else "N/A",
         score=review.score, comments=review.comments, verdict=review.verdict,
         criteria_scores=review.criteria_scores,
         status=review.status, reviewed_at=review.reviewed_at, created_at=review.created_at,
     )
 
 
-@router.get("/reviews/my", response_model=list[ReviewResponse])
+@router.get("/reviews/my", response_model=List[ReviewResponse])
 async def my_reviews(
     current_user: User = Depends(require_roles("REVIEWER")),
     db: Session = Depends(get_db),
@@ -108,9 +109,9 @@ async def my_reviews(
     return [
         ReviewResponse(
             id=r.id, council_id=r.council_id, proposal_id=r.proposal_id,
-            proposal_title=r.proposal.title if r.proposal else None,
+            proposal_title=r.proposal.title if r.proposal else "N/A",
             reviewer_id=r.reviewer_id,
-            reviewer_name=r.reviewer.full_name if r.reviewer else None,
+            reviewer_name=r.reviewer.full_name if r.reviewer else "N/A",
             score=r.score, comments=r.comments, verdict=r.verdict,
             criteria_scores=r.criteria_scores,
             status=r.status, reviewed_at=r.reviewed_at, created_at=r.created_at,
@@ -119,7 +120,7 @@ async def my_reviews(
     ]
 
 
-@router.get("/reviews/proposal/{proposal_id}", response_model=list[ReviewResponse])
+@router.get("/reviews/proposal/{proposal_id}", response_model=List[ReviewResponse])
 async def list_reviews_for_proposal(
     proposal_id: UUID,
     current_user: User = Depends(require_roles("STAFF", "LEADERSHIP", "ADMIN")),
@@ -135,9 +136,9 @@ async def list_reviews_for_proposal(
     return [
         ReviewResponse(
             id=r.id, council_id=r.council_id, proposal_id=r.proposal_id,
-            proposal_title=r.proposal.title if r.proposal else None,
+            proposal_title=r.proposal.title if r.proposal else "N/A",
             reviewer_id=r.reviewer_id,
-            reviewer_name=r.reviewer.full_name if r.reviewer else None,
+            reviewer_name=r.reviewer.full_name if r.reviewer else "N/A",
             score=r.score, comments=r.comments, verdict=r.verdict,
             criteria_scores=r.criteria_scores,
             status=r.status, reviewed_at=r.reviewed_at, created_at=r.created_at,
