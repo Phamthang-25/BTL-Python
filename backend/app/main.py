@@ -10,8 +10,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, users, catalog, periods, proposals, councils, workflow
 
 
+from app.core.db_utils import ensure_schema_consistency
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure schema is correct
+    try:
+        ensure_schema_consistency()
+    except Exception as e:
+        print(f"Warning: Schema sync failed: {e}")
+
     if os.getenv("AUTO_SEED", "false").lower() == "true":
         from app.seed.seed_data import seed
         seed()
