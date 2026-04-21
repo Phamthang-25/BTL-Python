@@ -141,6 +141,70 @@ async def get_faculty_stats(current_user: User = Depends(require_roles("FACULTY"
     return {"stats": {status: count for status, count in stats}}
 
 
+@router.get("/stats/overview")
+async def get_overview_stats(
+    current_user: User = Depends(require_roles("STAFF", "LEADERSHIP", "ADMIN")),
+    db: Session = Depends(get_db),
+):
+    """Dashboard overview stats: totals by period, department, status, approval/completion rates."""
+    from sqlalchemy import func
+    from app.models.catalog import Department
+
+    # Total by period
+    total_by_period = (
+        db.query(RegistrationPeriod.title, func.count(Proposal.id))
+        .outerjoin(Proposal, Proposal.period_id == RegistrationPeriod.id)
+        .group_by(RegistrationPeriod.id, RegistrationPeriod.title)
+        .order_by(RegistrationPeriod.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    # Total by department
+    total_by_department = (
+        db.query(Department.name, func.count(Proposal.id))
+        .outerjoin(Proposal, Proposal.department_id == Department.id)
+        .group_by(Department.id, Department.name)
+        .order_by(func.count(Proposal.id).desc())
+        .all()
+    )
+
+    # Status counts
+    status_rows = (
+        db.query(Proposal.status, func.count(Proposal.id))
+        .group_by(Proposal.status)
+        .all()
+    )
+    status_counts = {s: c for s, c in status_rows}
+    total = sum(status_counts.values())
+
+    approved = status_counts.get("APPROVED", 0) + status_counts.get("IN_PROGRESS", 0) + status_counts.get("COMPLETED", 0) + status_counts.get("ACCEPTED", 0)
+    rejected = status_counts.get("REJECTED", 0)
+    decided = approved + rejected
+    approval_rate = round((approved / decided * 100), 1) if decided > 0 else 0
+
+    completed = status_counts.get("COMPLETED", 0) + status_counts.get("ACCEPTED", 0)
+    in_progress = status_counts.get("IN_PROGRESS", 0)
+    completable = completed + in_progress
+    completion_rate = round((completed / completable * 100), 1) if completable > 0 else 0
+
+    # Overdue
+    overdue = status_counts.get("ACCEPTANCE_FAILED", 0)
+
+    return {
+        "total": total,
+        "total_by_period": [{"period_title": t, "count": c} for t, c in total_by_period],
+        "total_by_department": [{"department_name": t, "count": c} for t, c in total_by_department],
+        "status_counts": status_counts,
+        "approval_rate": approval_rate,
+        "completion_rate": completion_rate,
+        "approved": approved,
+        "rejected": rejected,
+        "in_progress": in_progress,
+        "completed": completed,
+    }
+
+
 # ── Create / Update / Delete ──────────────────────────────────────
 
 @router.post("/", response_model=ProposalResponse, status_code=201)
