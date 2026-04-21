@@ -502,28 +502,58 @@ class ReviewResponse(BaseModel):
 # ══════════════════════════════════════════════════════════════════
 
 class ProgressCreate(BaseModel):
-    report_period: Optional[str] = Field(None, max_length=50)
-    content: str = Field(..., min_length=50)
-    completion_pct: Decimal = Field(..., ge=0, le=100)
+    report_period: Optional[str] = Field(None, max_length=100)
+    content: str = Field(..., min_length=20, description="Công việc đã hoàn thành")
+    products_created: Optional[str] = Field(None, description="Sản phẩm đã tạo ra")
+    completion_pct: Decimal = Field(..., ge=0, le=100, description="Phần trăm hoàn thành")
+    issues: Optional[str] = Field(None, description="Khó khăn / rủi ro")
+    next_steps: str = Field(..., min_length=10, description="Kế hoạch tiếp theo")
+    attachment_url: Optional[str] = Field(None, max_length=500, description="Minh chứng đính kèm")
+
+
+class ProgressUpdate(BaseModel):
+    report_period: Optional[str] = Field(None, max_length=100)
+    content: Optional[str] = Field(None, min_length=20)
+    products_created: Optional[str] = None
+    completion_pct: Optional[Decimal] = Field(None, ge=0, le=100)
     issues: Optional[str] = None
-    next_steps: str = Field(..., min_length=20)
+    next_steps: Optional[str] = Field(None, min_length=10)
+    attachment_url: Optional[str] = Field(None, max_length=500)
+
+
+class ProgressReviewAction(BaseModel):
+    status: str = Field(..., pattern="^(ACCEPTED|NEEDS_REVISION|DELAYED)$")
+    note: Optional[str] = Field(None, min_length=5)
 
 
 class ProgressResponse(BaseModel):
     id: UUID
     proposal_id: UUID
+    proposal_title: Optional[str] = None
     submitted_by: UUID
     submitted_by_name: Optional[str] = None
     report_order: int
     report_period: Optional[str]
     content: str
+    products_created: Optional[str] = None
     completion_pct: Decimal
     issues: Optional[str]
     next_steps: str
+    attachment_url: Optional[str] = None
     status: str
+    is_overdue: bool = False
+    reviewed_by: Optional[UUID] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_note: Optional[str] = None
     submitted_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ProgressDetailResponse(ProgressResponse):
+    """Extended response with proposal context."""
+    pass
 
 
 class ProgressListResponse(BaseModel):
@@ -533,41 +563,125 @@ class ProgressListResponse(BaseModel):
     size: int
 
 
+class ProjectTimelineResponse(BaseModel):
+    proposal_id: UUID
+    proposal_title: str
+    proposal_status: str
+    pi_name: Optional[str] = None
+    duration_months: Optional[int] = None
+    approved_at: Optional[datetime] = None
+    created_at: datetime
+    status_history: List[Any] = []
+    progress_reports: List[ProgressResponse] = []
+    total_reports: int = 0
+    latest_completion_pct: float = 0.0
+
+
+class DashboardFacultyProgressResponse(BaseModel):
+    total_active_projects: int
+    items: List[Any] = []
+
+
+class DashboardStaffProgressResponse(BaseModel):
+    total_in_progress: int
+    total_approved_not_started: int
+    total_overdue_reports: int
+    pending_review_count: int
+    status_breakdown: Any = {}
+
+
 # ══════════════════════════════════════════════════════════════════
 # ACCEPTANCE
 # ══════════════════════════════════════════════════════════════════
 
-class AcceptanceSubmit(BaseModel):
-    final_report: str = Field(..., min_length=100)
-    achievements: str = Field(..., min_length=50)
+class AcceptanceDossierCreate(BaseModel):
+    """Tạo mới hồ sơ nghiệm thu."""
+    final_report: str = Field(..., min_length=50, description="Báo cáo tổng kết")
+    achievements: str = Field(..., min_length=20, description="Sản phẩm đạt được")
+    deliverables: Optional[str] = Field(None, description="Mô tả sản phẩm cụ thể")
+    impact_summary: Optional[str] = Field(None, description="Tóm tắt ứng dụng / tác động")
+    self_assessment: Optional[str] = Field(None, description="Tự đánh giá")
+    completion_explanation: Optional[str] = Field(None, description="Giải trình hoàn thành so với mục tiêu")
+    linked_publication_ids: Optional[List[UUID]] = Field(default_factory=list)
+    attachments_metadata: Optional[List[Any]] = Field(default_factory=list)
+
+
+class AcceptanceDossierUpdate(BaseModel):
+    """Cập nhật hồ sơ (chỉ khi DRAFT hoặc REVISION_REQUESTED)."""
+    final_report: Optional[str] = Field(None, min_length=50)
+    achievements: Optional[str] = Field(None, min_length=20)
     deliverables: Optional[str] = None
+    impact_summary: Optional[str] = None
+    self_assessment: Optional[str] = None
+    completion_explanation: Optional[str] = None
+    linked_publication_ids: Optional[List[UUID]] = None
+    attachments_metadata: Optional[List[Any]] = None
 
 
-class AcceptanceReturn(BaseModel):
-    reason: str = Field(..., min_length=10)
+class AcceptanceDossierHistoryItem(BaseModel):
+    id: UUID
+    from_status: Optional[str]
+    to_status: str
+    action: str
+    actor_id: Optional[UUID] = None
+    note: Optional[str]
+    changed_at: datetime
+    model_config = {"from_attributes": True}
 
 
 class AcceptanceDossierResponse(BaseModel):
     id: UUID
     proposal_id: UUID
+    proposal_title: Optional[str] = None
     submitted_by: UUID
     submitted_by_name: Optional[str] = None
     final_report: str
     achievements: str
-    deliverables: Optional[str]
+    deliverables: Optional[str] = None
+    impact_summary: Optional[str] = None
+    self_assessment: Optional[str] = None
+    completion_explanation: Optional[str] = None
+    linked_publication_ids: Optional[List[Any]] = []
+    attachments_metadata: Optional[List[Any]] = []
     status: str
-    revision_reason: Optional[str]
-    submitted_at: datetime
+    revision_reason: Optional[str] = None
+    final_verdict: Optional[str] = None
+    finalized_by: Optional[UUID] = None
+    finalized_by_name: Optional[str] = None
+    finalized_at: Optional[datetime] = None
+    finalize_note: Optional[str] = None
+    submitted_at: Optional[datetime] = None
     updated_at: datetime
+    created_at: datetime
+    status_history: List[AcceptanceDossierHistoryItem] = []
 
     model_config = {"from_attributes": True}
+
+
+class AcceptanceDossierListResponse(BaseModel):
+    items: List[AcceptanceDossierResponse]
+    total: int
+    page: int
+    size: int
+
+
+class AcceptanceDossierValidate(BaseModel):
+    """Staff validates/returns a submitted dossier."""
+    action: str = Field(..., pattern="^(APPROVE|RETURN)$")
+    reason: Optional[str] = Field(None, min_length=10)
+
+
+class AcceptanceFinalizeAction(BaseModel):
+    """Leadership finalizes the acceptance result."""
+    verdict: str = Field(..., pattern="^(excellent|good|pass|fail|revise_required)$")
+    note: Optional[str] = None
 
 
 class AcceptanceReviewSubmit(BaseModel):
     dossier_id: UUID
     council_id: UUID
     score: Decimal = Field(..., ge=0, le=100)
-    verdict: str = Field(..., pattern="^(PASS|FAIL)$")
+    verdict: str = Field(..., pattern="^(PASS|FAIL|NEEDS_REVISION)$")
     comments: str = Field(..., min_length=20)
 
 
@@ -585,3 +699,9 @@ class AcceptanceReviewResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# Legacy aliases for backward compatibility
+AcceptanceSubmit = AcceptanceDossierCreate
+AcceptanceReturn = AcceptanceDossierValidate
+ConfirmAcceptanceAction = AcceptanceFinalizeAction
