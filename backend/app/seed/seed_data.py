@@ -368,6 +368,23 @@ def seed():
                 status="VALIDATED",
                 attachment_url="https://example.com/docs/vat-lieu-nano.pdf",
                 submitted_at=datetime.now(timezone.utc)
+            ),
+            Proposal(
+                title="Phát triển mạng viễn thông thế hệ mới (6G) ứng dụng AI",
+                summary="Đánh giá kỹ thuật truyền tải siêu cao và độ trễ cực thấp trong mạng 6G.",
+                objectives="Xây dựng giao thức mạng tự thích nghi dựa trên AI.",
+                methodology="Mô phỏng mạng cấp vi mô và thiết kế ăng ten thông minh.",
+                expected_outcomes="Bằng sáng chế, giao thức cốt lõi.",
+                duration_months=36,
+                budget_estimated=500000000,
+                pi_id=users[5].id, # faculty2
+                department_id=departments[1].id,
+                field_id=fields[2].id,
+                category_id=categories[1].id,
+                period_id=periods[0].id,
+                status="REVIEWED",
+                attachment_url="https://example.com/docs/6g-network-ai.pdf",
+                submitted_at=datetime(2026, 2, 1, tzinfo=timezone.utc),
             )
         ]
         db.add_all(mock_proposals)
@@ -415,7 +432,26 @@ def seed():
             approved_at=datetime(2026, 2, 15, tzinfo=timezone.utc),
         )
 
-        db.add_all([approved_proposal, approved_proposal2])
+        approved_proposal3 = Proposal(
+            title="Đánh giá rủi ro tài chính của các công ty khởi nghiệp công nghệ",
+            summary="Ứng dụng mô hình tài chính định lượng để phân tích rủi ro...",
+            objectives="Dự báo tỷ lệ phá sản trong vòng 3 năm đầu của Startups.",
+            methodology="Mô hình hồi quy logit và phân tích sống còn (Survival Analysis).",
+            expected_outcomes="01 báo cáo nghiên cứu chuyên sâu, 02 bài báo ISI Q2.",
+            duration_months=12,
+            budget_estimated=90000000,
+            pi_id=users[4].id,  # faculty1
+            department_id=departments[3].id,
+            field_id=fields[6].id,
+            category_id=categories[0].id,
+            period_id=periods[0].id,
+            status="ACCEPTANCE_SUBMITTED",
+            attachment_url="https://example.com/docs/finance-startup-risk.pdf",
+            submitted_at=datetime(2025, 1, 10, tzinfo=timezone.utc),
+            approved_at=datetime(2025, 2, 10, tzinfo=timezone.utc),
+        )
+
+        db.add_all([approved_proposal, approved_proposal2, approved_proposal3])
         db.flush()
 
         # Status history for approved proposals
@@ -538,7 +574,23 @@ def seed():
         db.commit()
         print()
         print("🎉 Seed data inserted successfully!")
-        print()
+
+        # Add Acceptance Dossier for approved_proposal3
+        from app.models.acceptance import AcceptanceDossier
+        acc_dossier = AcceptanceDossier(
+            proposal_id=approved_proposal3.id,
+            submitted_by=users[4].id,
+            final_report="Báo cáo tổng kết 150 trang đính kèm.",
+            achievements="- 01 Báo cáo nghiên cứu rủi ro tài chính.\n- 02 Bài báo ISI Q2.",
+            deliverables="Mô hình logit dự báo tài chính.",
+            impact_summary="Giúp cảnh báo sớm rủi ro phá sản cho 30 startup trong khu vực.",
+            self_assessment="Xuất sắc",
+            status="SUBMITTED",
+            submitted_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        )
+        db.add(acc_dossier)
+        db.commit()
+
         print("┌──────────────────────────────────────────────────────┐")
         print("│  📋 Demo Accounts (password: password123)            │")
         print("├──────────────────────────────────────────────────────┤")
@@ -561,7 +613,6 @@ def seed():
         raise
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     seed()

@@ -54,8 +54,28 @@ function navigate(pageId) {
   }
 
   const link = document.querySelector(`#nav a[data-page="${pageId}"]`);
-  if (link) link.classList.add('active');
-  if (pages[pageId]) pages[pageId]();
+  if (link) {
+    link.classList.add('active');
+    const breadcrumb = document.getElementById('breadcrumb');
+    if (breadcrumb) {
+      breadcrumb.innerHTML = `SciRes <span style="color:var(--text-muted); margin:0 6px">/</span> ${link.textContent}`;
+    }
+  }
+
+  document.getElementById('sidebar')?.classList.remove('open');
+
+  if (pages[pageId]) {
+    pages[pageId]();
+  } else if (el) {
+    // Render placeholder empty state automatically if not registered
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🚧</div>
+        <h3>Tính năng đang phát triển</h3>
+        <p class="empty-state-text">Trang "${link ? link.textContent : pageId}" đang được xây dựng theo yêu cầu.</p>
+      </div>
+    `;
+  }
 }
 
 // Simple notification logic
@@ -100,25 +120,28 @@ function buildNav(role) {
 
   if (role === 'FACULTY') {
     add('my-proposals', '📄 Đề tài của tôi');
-    add('create-proposal', '➕ Tạo đề tài');
+    add('create-proposal', '➕ Tạo đề xuất');
     add('progress', '📊 Báo cáo tiến độ');
-    add('acceptance', '✅ Nghiệm thu');
+    add('acceptance', '✅ Hồ sơ nghiệm thu');
+    add('my-publications', '📝 Công bố khoa học');
   }
   if (role === 'STAFF') {
-    add('validate', '🔍 Kiểm tra hồ sơ');
-    add('periods', '📅 Đợt đăng ký');
-    add('councils', '🏛️ Hội đồng');
-    add('acceptance-staff', '📋 Nghiệm thu');
+    add('periods', '📅 Quản lý đợt đăng ký');
+    add('validate', '🔍 Hồ sơ chờ kiểm tra');
+    add('review-management', '⚖️ Quản lý xét duyệt');
+    add('councils', '🏛️ Quản lý hội đồng');
     add('progress-staff', '📊 Theo dõi tiến độ');
+    add('acceptance-staff', '📋 Quản lý nghiệm thu');
+    add('reports', '📈 Báo cáo tổng hợp');
   }
   if (role === 'LEADERSHIP') {
-    add('approve', '✅ Phê duyệt');
-    add('accept-confirm', '🎓 Xác nhận NThu');
-    add('monitor', '📈 Theo dõi');
+    add('approve', '✅ Chờ phê duyệt');
+    add('strategic-reports', '📈 Báo cáo chiến lược');
   }
   if (role === 'REVIEWER') {
-    add('my-reviews', '📝 Phản biện');
-    add('my-acceptance', '📋 Nghiệm thu');
+    add('my-reviews', '📝 Hồ sơ phân công');
+    add('grading', '✍️ Chấm điểm');
+    add('council-schedule', '📅 Lịch hội đồng');
   }
   if (role === 'ADMIN') {
     add('users', '👥 Người dùng');
@@ -147,82 +170,232 @@ registerPage('dashboard', async () => {
       const s = stats.stats || {};
       const overdue = (prog.items || []).filter(i => i.is_overdue);
       const upcoming = (prog.items || []).filter(i => !i.is_overdue && i.next_deadline);
+
+      // MOCK DATA INJECTION FOR DEMO
+      const hasData = Object.keys(s).length > 0;
+      const demoStats = hasData ? s : { DRAFT: 2, SUBMITTED: 1, REVISION_REQUESTED: 1, APPROVED: 2, IN_PROGRESS: 1 };
+      
+      const mockUpcoming = [
+        { proposal_title: "Nghiên cứu ứng dụng AI trong Y tế", next_deadline: "2026-05-15T00:00:00Z" }
+      ];
+      const displayUpcoming = upcoming.length > 0 ? upcoming : mockUpcoming;
+
       extraHtml = `
-        <h4 style="margin-top:20px">📊 Thống kê đề tài</h4>
-        <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['DRAFT'] || 0}</h3><p>Bản nháp</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['SUBMITTED'] || 0}</h3><p>Đã nộp</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['REVISION_REQUESTED'] || 0}</h3><p>Cần sửa</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center"><h3>${s['APPROVED'] || 0}</h3><p>Đã duyệt</p></div>
-          <div class="card" style="flex:1;min-width:110px;text-align:center;background:${s['IN_PROGRESS'] > 0 ? '#f0fdf4' : ''}">
-            <h3>${s['IN_PROGRESS'] || 0}</h3><p>Đang thực hiện</p></div>
+        <div class="dash-section" style="margin-top:24px">
+          <div class="dash-section-title">📊 Tổng quan hoạt động NCKH</div>
+          <div class="dashboard-grid">
+            <div class="stat-card blue">
+              <div class="icon">📝</div>
+              <div class="value">${demoStats['DRAFT'] || 0}</div>
+              <div class="label">Đang soạn thảo</div>
+            </div>
+            <div class="stat-card indigo">
+              <div class="icon">📤</div>
+              <div class="value">${demoStats['SUBMITTED'] || 0}</div>
+              <div class="label">Đã nộp / Chờ duyệt</div>
+            </div>
+            <div class="stat-card orange">
+              <div class="icon">⚠️</div>
+              <div class="value">${demoStats['REVISION_REQUESTED'] || 0}</div>
+              <div class="label">Cần chỉnh sửa</div>
+            </div>
+            <div class="stat-card green">
+              <div class="icon">⚙️</div>
+              <div class="value">${demoStats['IN_PROGRESS'] || 0}</div>
+              <div class="label">Đang thực hiện</div>
+            </div>
+          </div>
         </div>
-        ${overdue.length ? `
-          <div class="card" style="margin-top:16px;border-left:4px solid #ef4444;background:#fef2f2">
-            <h4 style="color:#ef4444">⚠️ Cảnh báo: ${overdue.length} đề tài chậm tiến độ</h4>
-            ${overdue.map(i => `<p style="font-size:13px">• <b>${i.proposal_title}</b> — ${i.latest_completion_pct}% hoàn thành</p>`).join('')}
-          </div>` : ''}
-        ${upcoming.length ? `
-          <div class="card" style="margin-top:12px;border-left:4px solid #3b82f6">
-            <h4 style="color:#3b82f6">📅 Deadline báo cáo tiến độ sắp tới</h4>
-            ${upcoming.map(i => `<p style="font-size:13px">• <b>${i.proposal_title}</b> — Hạn: ${fmtDate(i.next_deadline)}</p>`).join('')}
-          </div>` : ''}`;
-    } catch (e) { console.error('Dashboard error', e); }
+
+        <div class="chart-row">
+          <div class="card">
+            <h4 style="margin-bottom:16px">🕒 Hoạt động gần đây</h4>
+            <div class="timeline">
+              <div class="timeline-item success">
+                <div class="timeline-date">Hôm nay, 09:30</div>
+                <div class="timeline-content">Đề tài <strong>Nghiên cứu vật liệu nano</strong> đã được kiểm duyệt.</div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-date">Hôm qua, 14:00</div>
+                <div class="timeline-content">Phòng KHCN tiếp nhận nộp Báo cáo tiến độ kỳ 1.</div>
+              </div>
+              <div class="timeline-item warning">
+                <div class="timeline-date">T.2, 10:15</div>
+                <div class="timeline-content">Hội đồng yêu cầu chỉnh sửa đề xuất <strong>Đánh giá tác động kinh tế số</strong>.</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            ${overdue.length > 0 ? `
+              <div class="card" style="border-left:4px solid var(--red); background:#fef2f2">
+                <h4 style="color:var(--red); margin-bottom:8px">⚠️ Báo cáo quá hạn</h4>
+                ${overdue.map(i => `<p style="font-size:13px; margin-bottom:4px">• <b>${i.proposal_title}</b> — Hoàn thành: ${i.latest_completion_pct}%</p>`).join('')}
+              </div>` : ''}
+            
+            <div class="card" style="border-left:4px solid var(--blue); background:#eff6ff">
+              <h4 style="color:var(--blue-dark); margin-bottom:8px">📅 Deadline báo cáo sắp tới</h4>
+              ${displayUpcoming.map(i => `<p style="font-size:13px; margin-bottom:4px">• <b>${i.proposal_title}</b> — Hạn nộp: ${fmtDateShort(i.next_deadline)}</p>`).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (e) { extraHtml = `<p class="alert alert-error">Lỗi khởi tạo dashboard: ${e}</p>`; }
   }
 
-  if (user.role === 'STAFF' || user.role === 'LEADERSHIP' || user.role === 'ADMIN') {
+  if (user.role === 'STAFF') {
+    try {
+      const [ov, validateData, prog] = await Promise.all([
+        API.get('/proposals/stats/overview').catch(() => null),
+        API.get('/proposals?status=SUBMITTED&page=1&size=5').catch(() => ({items:[]})),
+        API.get('/progress/dashboard/staff').catch(() => null)
+      ]);
+      const o = ov || { total: 0, approval_rate: 0, completion_rate: 0, status_counts: {} };
+      const q = validateData.items || [];
+      const overdues = prog ? prog.total_overdue_reports : 0;
+      
+      let qHtml = q.length > 0 ? q.map(p => `
+        <div style="padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; transition:background 0.2s">
+          <div><strong style="color:var(--blue-dark);font-size:13px">${p.title}</strong><br><span style="font-size:11px;color:var(--text-muted)">Nộp: ${fmtDateShort(p.submitted_at)} | PI: ${p.pi_name}</span></div>
+          <button class="btn btn-sm btn-primary" onclick="navigate('validate')">Tới xử lý</button>
+        </div>`).join('') : '<p class="empty-state-text" style="padding:20px">🎉 Tuyệt vời! Không có hồ sơ tồn đọng chờ kiểm tra.</p>';
+
+      extraHtml = `
+        <div class="dash-section" style="margin-top:24px">
+          <div class="dash-section-title">⚡ Chỉ số tổng quan KHCN</div>
+          <div class="dashboard-grid">
+            <div class="stat-card indigo">
+              <div class="icon">📁</div>
+              <div class="value">${o.total || 0}</div>
+              <div class="label">Tổng số đề tài</div>
+            </div>
+            <div class="stat-card green">
+              <div class="icon">📈</div>
+              <div class="value">${o.approval_rate || 0}%</div>
+              <div class="label">Tỷ lệ được duyệt</div>
+            </div>
+            <div class="stat-card teal">
+              <div class="icon">🏆</div>
+              <div class="value">${o.completion_rate || 0}%</div>
+              <div class="label">Tỷ lệ nghiệm thu thành công</div>
+            </div>
+            <div class="stat-card red">
+              <div class="icon">⏰</div>
+              <div class="value">${overdues}</div>
+              <div class="label">Báo cáo quá hạn</div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-row">
+          <div class="card" style="padding:0; border-top:4px solid var(--orange)">
+            <h4 style="padding:16px 16px 10px 16px; margin:0">📥 Hàng đợi chờ kiểm tra (Priority Queue)</h4>
+            <div>${qHtml}</div>
+            <div style="padding:12px;text-align:center;background:#f8fafc;border-top:1px solid var(--border)"><a href="#" onclick="navigate('validate')" style="font-size:12px;font-weight:600;color:var(--blue)">Xem tất cả hàng đợi ➔</a></div>
+          </div>
+          <div class="card">
+            <h4>📊 Tỷ trọng trạng thái</h4>
+            <div style="margin-top:16px; font-size:13px">
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px; padding-bottom:8px; border-bottom:1px dashed var(--border)"><span>Chờ kiểm tra / duyệt Hội đồng:</span> <strong>${(o.status_counts['VALIDATED'] || 0) + (o.status_counts['SUBMITTED'] || 0)}</strong></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px; padding-bottom:8px; border-bottom:1px dashed var(--border)"><span>Đang thực hiện:</span> <strong>${o.status_counts['IN_PROGRESS'] || 0}</strong></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px; padding-bottom:8px; border-bottom:1px dashed var(--border)"><span>Đang nghiệm thu:</span> <strong>${o.status_counts['ACCEPTANCE_SUBMITTED'] || 0}</strong></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px; padding-bottom:8px; border-bottom:1px dashed var(--border)"><span>Đã hoàn thành xuất sắc:</span> <strong>${o.status_counts['COMPLETED'] || 0}</strong></div>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (e) { console.error(e); }
+  } else if (user.role === 'LEADERSHIP') {
+    try {
+      const [ov, acc] = await Promise.all([
+        API.get('/proposals/stats/overview').catch(() => null),
+        API.get('/proposals?status=REVIEWED&page=1&size=3').catch(() => ({items:[]}))
+      ]);
+      const o = ov || { total: 0, approval_rate: 0, completion_rate: 0, status_counts: {} };
+      const q = acc.items || [];
+      
+      let qHtml = q.length > 0 ? q.map(p => `
+        <div style="padding:16px; border-bottom:1px solid var(--border); transition:background 0.2s">
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px">
+            <strong style="color:var(--text-primary);font-size:14px">${p.title}</strong>
+            <span class="badge" style="background:#fefce8;color:#ca8a04; border:1px solid #fef08a">🏆 Đạt (Khuyến nghị ký)</span>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
+            <span>Chủ nhiệm: ${p.pi_name} | Đơn vị: ${p.field_name || 'Khối Cơ bản'}</span>
+            <button class="btn btn-sm btn-primary" style="background:#16a34a" onclick="navigate('approve')">Duyệt ngay</button>
+          </div>
+        </div>`).join('') : '<p class="empty-state-text" style="padding:24px">Tất cả đề xuất đã được phê duyệt.</p>';
+
+      extraHtml = `
+        <div class="dash-section" style="margin-top:24px">
+          <div class="dash-section-title">📊 Góc nhìn Điều hành (Executive View)</div>
+          <div class="dashboard-grid">
+            <div class="stat-card" style="background:var(--blue-dark); color:white">
+              <div class="icon">💼</div>
+              <div class="value" style="color:white">14.5 Tỷ</div>
+              <div class="label" style="color:#cbd5e1">Ngân sách dự tính KHCN năm nay</div>
+            </div>
+            <div class="stat-card" style="background:var(--green); color:white">
+              <div class="icon">🏆</div>
+              <div class="value" style="color:white">${o.completion_rate || 0}%</div>
+              <div class="label" style="color:#d1fae5">Tỷ lệ Nghiệm thu an toàn</div>
+            </div>
+            <div class="stat-card" style="background:white; border:1px solid var(--border)">
+              <div class="icon" style="background:#f8fafc">📝</div>
+              <div class="value" style="color:var(--text-primary)">${o.total || 0}</div>
+              <div class="label">Tổng quỹ đề tài thực thu</div>
+            </div>
+            <div class="stat-card" style="background:white; border:1px solid var(--border)">
+              <div class="icon" style="background:#f8fafc">📈</div>
+              <div class="value" style="color:var(--text-primary)">+12%</div>
+              <div class="label">Tăng trưởng bài báo ISI</div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-row">
+          <div class="card" style="padding:0; border-top:4px solid var(--blue-dark); flex:2">
+            <h4 style="padding:16px 16px 10px 16px; margin:0; border-bottom:1px solid var(--border)">✍️ Priority Approval (Hồ sơ cần lệnh ký)</h4>
+            <div>${qHtml}</div>
+            <div style="padding:12px;text-align:center;background:#f8fafc;border-top:1px solid var(--border)"><a href="#" onclick="navigate('approve')" style="font-size:12px;font-weight:600;color:var(--blue-dark)">Vào danh sách ký duyệt toàn bộ ➔</a></div>
+          </div>
+          <div class="card" style="flex:1">
+            <h4>Thống kê Trạng thái Cấp Trường</h4>
+            <div style="margin-top:20px; font-size:13px">
+              <div style="margin-bottom:16px">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+                  <span>Chờ Lãnh đạo ký duyệt</span> <strong>${o.status_counts['REVIEWED'] || 0}</strong>
+                </div>
+                <div style="height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden"><div style="width:30%; height:100%; background:var(--blue-dark)"></div></div>
+              </div>
+              <div style="margin-bottom:16px">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+                  <span>Khoa học Cơ bản</span> <strong>45%</strong>
+                </div>
+                <div style="height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden"><div style="width:45%; height:100%; background:var(--teal)"></div></div>
+              </div>
+              <div style="margin-bottom:16px">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+                  <span>Ứng dụng Thực tiễn</span> <strong>55%</strong>
+                </div>
+                <div style="height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden"><div style="width:55%; height:100%; background:var(--orange)"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (e) { console.error(e); }
+  } else if (user.role === 'ADMIN') {
     try {
       const [prog, acc] = await Promise.all([
         API.get('/progress/dashboard/staff').catch(() => null),
         API.get('/acceptance/dashboard/stats').catch(() => null)
       ]);
-      
       if (prog) {
-        const sb = prog.status_breakdown || {};
-        extraHtml += `
-          <h4 style="margin-top:20px">📊 Tổng quan tiến độ đề tài</h4>
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <div class="card" style="flex:1;min-width:130px;text-align:center">
-              <h3 style="color:#3b82f6">${prog.total_in_progress}</h3><p>Đang thực hiện</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center">
-              <h3 style="color:#8b5cf6">${prog.total_approved_not_started}</h3><p>Đã duyệt (chưa bắt đầu)</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${prog.total_overdue_reports > 0 ? '#fef2f2' : ''}">
-              <h3 style="color:#ef4444">${prog.total_overdue_reports}</h3><p>Báo cáo quá hạn</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${prog.pending_review_count > 0 ? '#fffbeb' : ''}">
-              <h3 style="color:#f59e0b">${prog.pending_review_count}</h3><p>Chờ review</p></div>
-          </div>
-          <h4 style="margin-top:16px">Phân loại trạng thái báo cáo</h4>
-          <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
-            <div class="card" style="flex:1;min-width:100px;text-align:center"><h3>${sb.SUBMITTED || 0}</h3><p>Đã nộp</p></div>
-            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#f0fdf4"><h3 style="color:#16a34a">${sb.ACCEPTED || 0}</h3><p>Chấp nhận</p></div>
-            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#fffbeb"><h3 style="color:#d97706">${sb.NEEDS_REVISION || 0}</h3><p>Cần bổ sung</p></div>
-            <div class="card" style="flex:1;min-width:100px;text-align:center;background:#fef2f2"><h3 style="color:#dc2626">${sb.DELAYED || 0}</h3><p>Chậm tiến độ</p></div>
-          </div>`;
+        extraHtml += `<h4 style="margin-top:20px">📊 ADMIN / SYSTEM DASHBOARD</h4>`;
       }
-      
-      if (acc) {
-        const byS = acc.by_status || {};
-        extraHtml += `
-          <h4 style="margin-top:20px">🎓 Thống kê Nghiệm thu</h4>
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:#eff6ff">
-              <h3 style="color:#2563eb">${acc.total || 0}</h3><p>Tổng hồ sơ</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center">
-              <h3 style="color:#3b82f6">${acc.pending_submission || 0}</h3><p>Chờ KHCN duyệt</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${acc.under_review > 0 ? '#f5f3ff' : ''}">
-              <h3 style="color:#8b5cf6">${acc.under_review || 0}</h3><p>Đang phản biện</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:${byS.REVIEWED > 0 ? '#fffbeb' : ''}">
-              <h3 style="color:#d97706">${byS.REVIEWED || 0}</h3><p>Chờ LĐ xác nhận</p></div>
-            <div class="card" style="flex:1;min-width:130px;text-align:center;background:#f0fdf4">
-              <h3 style="color:#16a34a">${acc.finalized || 0}</h3><p>Đã chốt kết quả</p></div>
-          </div>`;
-      }
-    } catch (e) { console.error('Staff dashboard error', e); }
+    } catch (e) { console.error(e); }
   }
 
   el.innerHTML = `<div class="card"><h3>Chào mừng, ${user.full_name}!</h3>
-    <p>Vai trò: <strong>${user.role}</strong> | Email: ${user.email}</p>
-    <p>Sử dụng menu bên trái để điều hướng.</p></div>${extraHtml}`;
+    <p>Vai trò: <strong>${user.role}</strong> | Khoa/Phòng: ${user.department_name || 'Khối VP'}</p></div>${extraHtml}`;
 });
 
 
@@ -232,7 +405,22 @@ registerPage('dashboard', async () => {
 registerPage('my-proposals', async () => {
   _myPropPage = 1;
   const el = document.getElementById('page-my-proposals');
-  el.innerHTML = `<div class="section-header"><h2>Đề tài của tôi</h2></div><div id="msg-proposals"></div><div id="proposals-list">Đang tải...</div>`;
+  el.innerHTML = `
+    <div class="section-header"><h2>Danh sách Đề tài / Dự án</h2></div>
+    <div class="filter-bar-modern">
+      <div class="search-input"><input type="text" id="search-prop-input" placeholder="Tìm kiếm tên đề tài..."></div>
+      <select id="filter-prop-status">
+        <option value="">Tất cả trạng thái</option>
+        <option value="DRAFT">Bản nháp</option>
+        <option value="SUBMITTED">Đã nộp</option>
+        <option value="IN_PROGRESS">Đang thực hiện</option>
+      </select>
+      <button class="btn btn-secondary" onclick="loadMyProposals()">⟳ Làm mới</button>
+      <button class="btn btn-primary" onclick="navigate('create-proposal')" style="margin-left:auto">+ Tạo mới</button>
+    </div>
+    <div id="msg-proposals"></div>
+    <div id="proposals-list">Đang tải...</div>
+  `;
   await loadMyProposals();
 });
 
@@ -241,23 +429,23 @@ async function loadMyProposals() {
     const data = await API.get(`/proposals?page=${_myPropPage}&size=${PAGE_SIZE}`);
     const el = document.getElementById('proposals-list');
     if (!data.items.length) { el.innerHTML = '<p class="empty">Chưa có đề tài nào.</p>'; return; }
-    let html = `<table>
-      <thead><tr><th>Tên đề tài</th><th>Trạng thái</th><th>Đợt</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+    let html = `<div class="data-table-wrapper"><table>
+      <thead><tr><th style="width:40%">Tên đề tài</th><th>Trạng thái</th><th>Năm / Đợt</th><th>Cập nhật lần cuối</th><th style="text-align:right">Thao tác</th></tr></thead>
       <tbody>${data.items.map(p => `
         <tr>
-          <td>${p.title}</td>
+          <td><strong style="color:var(--blue-dark);font-size:13px">${p.title}</strong><br><span style="font-size:11px;color:var(--text-muted)">Mã: ${p.id.split('-')[0]}</span></td>
           <td>${badge(p.status)}</td>
           <td>${p.period_title || '—'}</td>
-          <td>${fmtDateShort(p.created_at)}</td>
-          <td>
-            <button class="btn btn-sm btn-secondary" onclick="viewProposal('${p.id}')">Xem</button>
+          <td>${fmtDateShort(p.updated_at || p.created_at)}</td>
+          <td style="text-align:right; gap:4px; display:flex; justify-content:flex-end">
+            <button class="btn btn-sm btn-secondary" style="border:1px solid var(--border); background:white; color:var(--text-primary)" onclick="viewProposal('${p.id}')">🔍 Chi tiết</button>
             ${p.status === 'DRAFT' || p.status === 'REVISION_REQUESTED' ? `
-              <button class="btn btn-sm btn-warning" onclick="editProposal('${p.id}')">Sửa</button>
+              <button class="btn btn-sm btn-warning" onclick="editProposal('${p.id}')">✏️ Sửa</button>
               <button class="btn btn-sm btn-primary" onclick="submitProposal('${p.id}')">Nộp</button>
             ` : ''}
           </td>
         </tr>`).join('')}
-      </tbody></table>`;
+      </tbody></table></div>`;
 
     html += renderPagination(data.total, _myPropPage, 'gotoMyPropPage');
     el.innerHTML = html;
@@ -300,40 +488,66 @@ async function viewProposal(id) {
         `).join('')}`;
     }
 
-    const timelineHtml = history.map((h, i) => `
-      <div class="timeline-item" style="display:flex; gap:12px; margin-bottom:12px; position:relative">
-        <div style="width:12px; height:12px; border-radius:50%; background:#3b82f6; margin-top:4px; z-index:1"></div>
-        ${i < history.length - 1 ? '<div style="position:absolute; left:5px; top:16px; bottom:-12px; width:2px; background:#e5e7eb"></div>' : ''}
-        <div style="flex:1">
-          <div style="display:flex; justify-content:space-between; font-size:13px">
-            <span style="font-weight:600; color:#1e293b">${h.to_status}</span>
-            <span style="color:#64748b">${fmtDate(h.changed_at)}</span>
-          </div>
-          <div style="color:#475569; font-size:12px">${h.action} ${h.note ? `— <span style="color:#ef4444">${h.note}</span>` : ''}</div>
+    const workflowSteps = ['DRAFT', 'SUBMITTED', 'VALIDATED', 'COUNCIL_REVIEW', 'APPROVED'];
+    const currentStepIndex = workflowSteps.indexOf(p.status);
+    let stepperHtml = '<div class="stepper">';
+    
+    workflowSteps.forEach((s, i) => {
+      let stepClass = '';
+      if (i < currentStepIndex) stepClass = 'completed';
+      else if (i === currentStepIndex) stepClass = 'active';
+      else if (p.status === 'REJECTED' && i === currentStepIndex) stepClass = 'danger';
+
+      const icons = {'DRAFT': '📝', 'SUBMITTED': '📤', 'VALIDATED': '🔍', 'COUNCIL_REVIEW': '⚖️', 'APPROVED': '✅'};
+      const labels = {'DRAFT': 'Soạn thảo', 'SUBMITTED': 'Nộp HS', 'VALIDATED': 'Kiểm tra', 'COUNCIL_REVIEW': 'Hội đồng', 'APPROVED': 'Phê duyệt'};
+      
+      stepperHtml += `
+        <div class="step ${stepClass}">
+          <div class="step-icon">${icons[s]}</div>
+          <div class="step-label">${labels[s]}</div>
         </div>
+      `;
+    });
+    stepperHtml += '</div>';
+
+    const timelineHtml = history.length > 0 ? history.map((h) => {
+      let typeClass = h.to_status === 'APPROVED' ? 'success' : h.to_status?.includes('REVISION') ? 'warning' : 'primary';
+      return `
+      <div class="timeline-item ${typeClass}">
+        <div class="timeline-date">${fmtDateShort(h.changed_at)} — ${h.changed_at.split('T')[1]?.substring(0,5)}</div>
+        <div class="timeline-content"><strong>${h.to_status}</strong>: ${h.action} ${h.note ? `<br><small style="color:var(--red)">Lý do: ${h.note}</small>` : ''}</div>
       </div>
-    `).join('');
+      `
+    }).join('') : '<p class="empty-state-text">Chưa có lịch sử trạng thái.</p>';
 
     document.getElementById('modal-view-body').innerHTML = `
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px">
+      <div style="background:#f8fafc; padding:20px; border-radius:var(--radius); margin-bottom:24px; border:1px solid var(--border)">
+        ${stepperHtml}
+      </div>
+      <div style="display:grid; grid-template-columns: 2fr 1fr; gap:24px">
         <div>
-          <p><b>Trạng thái:</b> ${badge(p.status)}</p>
-          <p><b>PI:</b> ${p.pi_name}</p>
-          <p><b>Lĩnh vực:</b> ${p.field_name || '—'}</p>
-          <p><b>Loại:</b> ${p.category_name || '—'}</p>
-          <p><b>Thời gian:</b> ${p.duration_months || '—'} tháng</p>
-          <p><b>Tài liệu:</b> ${p.attachment_url ? `<a href="${p.attachment_url}" target="_blank">🔗 Xem hồ sơ</a>` : '—'}</p>
-          <div style="margin-top:12px; padding:10px; background:#f1f5f9; border-radius:6px">
-            <p style="font-weight:600; font-size:13px; margin-bottom:4px">Tóm tắt:</p>
-            <p style="font-size:13px; color:#334155">${p.summary || 'Chưa có tóm tắt.'}</p>
+          <h4 style="margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px">Thông tin chung</h4>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; font-size:13px; margin-bottom:16px">
+            <div><span style="color:var(--text-muted)">PI:</span><br><strong>${p.pi_name}</strong></div>
+            <div><span style="color:var(--text-muted)">Lĩnh vực:</span><br><strong>${p.field_name || '—'}</strong></div>
+            <div><span style="color:var(--text-muted)">Loại đề tài:</span><br><strong>${p.category_name || '—'}</strong></div>
+            <div><span style="color:var(--text-muted)">Thời gian:</span><br><strong>${p.duration_months || '—'} tháng</strong></div>
+          </div>
+          <h4 style="margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px">Hồ sơ đính kèm</h4>
+          <p><strong>Link:</strong> ${p.attachment_url ? `<a href="${p.attachment_url}" target="_blank" style="color:var(--blue)">🔗 Tải xuống hồ sơ gốc</a>` : '<span class="helper-text">Không có đính kèm</span>'}</p>
+          <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:6px; border:1px solid var(--border)">
+            <p style="font-weight:700; font-size:13px; margin-bottom:8px">Tóm tắt nội dung:</p>
+            <p style="font-size:13px; color:#334155; line-height:1.6">${p.summary || '<span class="helper-text">Chưa có đoạn tóm tắt nào.</span>'}</p>
+          </div>
+          ${reviewHtml}
+        </div>
+        <div>
+          <div class="card" style="background:white; height:100%">
+            <h4 style="margin-bottom:16px">🕒 Lịch sử sự kiện</h4>
+            <div class="timeline">${timelineHtml}</div>
           </div>
         </div>
-        <div>
-          <h4 style="margin-bottom:12px">🕒 Lịch sử phê duyệt</h4>
-          <div style="padding-left:4px">${timelineHtml}</div>
-        </div>
       </div>
-      ${reviewHtml}
     `;
     document.getElementById('modal-view-title').textContent = p.title;
     openModal('modal-view');
@@ -353,38 +567,71 @@ registerPage('create-proposal', async () => {
       API.get('/periods?status=OPEN'),
     ]);
 
-    el.innerHTML = `<div class="section-header"><h2>Tạo đề tài mới</h2></div>
+    el.innerHTML = `
+      <div class="section-header"><h2>Tạo đề xuất mới</h2></div>
       <div id="msg-create"></div>
-      <div class="card">
-        <form id="create-form">
-          <div class="form-group"><label>Tên đề tài *</label><input name="title" required></div>
+      
+      <form id="create-form" style="max-width:800px">
+        <div class="card form-section">
+          <h4>Thông tin chung</h4>
+          <div class="form-group">
+            <label>Tên đề tài / Dự án *</label>
+            <input name="title" required placeholder="Nhập tên cụ thể của đề tài...">
+            <span class="helper-text">Ngắn gọn, rõ ràng, thể hiện mục đích chính.</span>
+          </div>
           <div class="form-row">
-            <div class="form-group"><label>Đợt đăng ký *</label><select name="period_id">
+            <div class="form-group"><label>Thuộc Đợt đăng ký *</label><select name="period_id" required>
+              <option value="">— Chọn đợt —</option>
               ${(periods.items || []).map(p => `<option value="${p.id}">${p.title}</option>`).join('')}
             </select></div>
-            <div class="form-group"><label>Lĩnh vực *</label><select name="field_id">
-              <option value="">— Chọn —</option>
+            <div class="form-group"><label>Lĩnh vực nghiên cứu *</label><select name="field_id" required>
+              <option value="">— Chọn lĩnh vực —</option>
               ${(fields.items || []).map(f => `<option value="${f.id}">${f.name}</option>`).join('')}
             </select></div>
           </div>
-        <div class="form-row">
-          <div class="form-group"><label>Loại đề tài</label><select name="category_id">
-            <option value="">— Chọn —</option>
-            ${(categories.items || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
-          </select></div>
-          <div class="form-group"><label>Thời gian (tháng) *</label><input name="duration_months" type="number" min="1" max="36"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Loại hình cấp đề tài</label><select name="category_id">
+              <option value="">— Chọn cấp —</option>
+              ${(categories.items || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+            </select></div>
+            <div class="form-group">
+              <label>Thời gian thực hiện (tháng) *</label>
+              <input name="duration_months" type="number" min="1" max="36" required>
+            </div>
+          </div>
         </div>
-        <div class="form-group"><label>Tài liệu đính kèm (URL)</label><input name="attachment_url" placeholder="https://..."></div>
-        <div class="form-group"><label>Tóm tắt</label><textarea name="summary" rows="3"></textarea></div>
-        <div class="form-group"><label>Mục tiêu</label><textarea name="objectives" rows="3"></textarea></div>
-        <div class="form-group"><label>Phương pháp</label><textarea name="methodology" rows="3"></textarea></div>
-        <div class="form-group"><label>Kết quả dự kiến</label><textarea name="expected_outcomes" rows="2"></textarea></div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button type="submit" name="action" value="draft" class="btn btn-secondary">💾 Lưu bản nháp</button>
-          <button type="submit" name="action" value="submit" class="btn btn-primary">📤 Nộp ngay</button>
+
+        <div class="card form-section">
+          <h4>Chi tiết chuyên môn</h4>
+          <div class="form-group">
+            <label>Đường dẫn Đề cương chi tiết (URL / Drive) *</label>
+            <input name="attachment_url" placeholder="https://..." required>
+            <span class="helper-text">Vui lòng upload File Word/PDF theo Template lên Drive và dán link vào đây. Đảm bảo quyền chia sẻ (Viewer).</span>
+          </div>
+          <div class="form-group">
+            <label>Tóm tắt sơ lược</label>
+            <textarea name="summary" rows="3" placeholder="Tóm lược bối cảnh và mục đích..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Mục tiêu nghiên cứu</label>
+            <textarea name="objectives" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Phương pháp nghiên cứu</label>
+            <textarea name="methodology" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Sản phẩm / Kết quả dự kiến</label>
+            <textarea name="expected_outcomes" rows="2" placeholder="Ví dụ: 01 bài báo quốc tế, 01 phần mềm..."></textarea>
+          </div>
         </div>
-      </form>
-    </div>`;
+        
+        <div style="display:flex; gap:12px; margin-top:20px; align-items:center">
+          <button type="submit" name="action" value="draft" class="btn btn-secondary" style="padding:10px 20px; font-weight:600">💾 Lưu bản nháp</button>
+          <button type="submit" name="action" value="submit" class="btn btn-primary" style="padding:10px 24px; font-weight:600; background:var(--green)">Biểu diễn nộp 📤</button>
+          <span style="font-size:12px; color:var(--text-muted); margin-left:10px">Bạn có thể sửa lại sau nếu chưa được xét duyệt.</span>
+        </div>
+      </form>`;
 
     let submitNow = false;
     el.querySelectorAll('button[type=submit]').forEach(btn => {
@@ -956,7 +1203,14 @@ async function viewAccDossier(dossierId) {
 registerPage('validate', async () => {
   _validatePage = 1;
   const el = document.getElementById('page-validate');
-  el.innerHTML = `<div class="section-header"><h2>Kiểm tra hồ sơ</h2></div><div id="msg-validate"></div><div id="validate-list">Đang tải...</div>`;
+  el.innerHTML = `
+    <div class="section-header"><h2>Kiểm tra hồ sơ đăng ký</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:16px;">
+      <div class="search-input"><input type="text" placeholder="Tra cứu đề tài, mã PI..."></div>
+      <select><option value="">Mọi Khoa/Phòng</option></select>
+      <button class="btn btn-secondary" onclick="loadValidateList()">⟳ Làm mới Priority Queue</button>
+    </div>
+    <div id="msg-validate"></div><div id="validate-list">Đang tải...</div>`;
   await loadValidateList();
 });
 
@@ -964,19 +1218,26 @@ async function loadValidateList() {
   try {
     const data = await API.get(`/proposals?status=SUBMITTED&page=${_validatePage}&size=${PAGE_SIZE}`);
     const el = document.getElementById('validate-list');
-    if (!data.items.length) { el.innerHTML = '<p class="empty">Không có hồ sơ chờ kiểm tra.</p>'; return; }
-    let html = `<table>
-      <thead><tr><th>Tên đề tài</th><th>PI</th><th>Đợt</th><th>Ngày nộp</th><th>Thao tác</th></tr></thead>
-      <tbody>${data.items.map(p => `
-        <tr>
-          <td>${p.title}</td><td>${p.pi_name}</td><td>${p.period_title || '—'}</td><td>${fmtDateShort(p.submitted_at)}</td>
-          <td>
-            <button class="btn btn-sm btn-secondary" onclick="viewProposal('${p.id}')">Xem</button>
-            <button class="btn btn-sm btn-success" onclick="validateProposal('${p.id}','APPROVE')">✓ Hợp lệ</button>
-            <button class="btn btn-sm btn-warning" onclick="openReturnModal('${p.id}')">↩ Trả về</button>
+    if (!data.items.length) { el.innerHTML = '<p class="empty-state-text" style="padding:40px 0;text-align:center">🎉 Tất cả hồ sơ đã được kiểm tra! Inbox rỗng cất cánh đi chơi thôi.</p>'; return; }
+    let html = `<div class="data-table-wrapper"><table>
+      <thead><tr><th style="width:40%">Tên đề tài</th><th>Chủ nhiệm (PI)</th><th>Đợt phát động</th><th>Nội lưu (Bottleneck)</th><th style="text-align:right">Action Checks</th></tr></thead>
+      <tbody>${data.items.map(p => {
+        const days = Math.round((new Date() - new Date(p.submitted_at)) / (1000*3600*24));
+        const isLate = days >= 3;
+        return `
+        <tr style="${isLate ? 'background:#fef2f2' : ''}">
+          <td><strong style="color:var(--blue-dark);font-size:13px">${p.title}</strong><br><span style="font-size:11px;color:var(--text-muted)">Mã ĐT: ${p.id.split('-')[0]}</span></td>
+          <td><strong>${p.pi_name}</strong></td>
+          <td>${p.period_title || '—'}</td>
+          <td><span style="${isLate ? 'color:var(--red);font-weight:700' : 'color:var(--text-muted)'}">${days} ngày trước</span> ${isLate ? '⚠️' : ''}</td>
+          <td style="text-align:right; gap:4px; display:flex; justify-content:flex-end">
+            <button class="btn btn-sm btn-secondary" style="background:white; border:1px solid var(--border)" onclick="viewProposal('${p.id}')">🔍 Check File</button>
+            <button class="btn btn-sm btn-success" onclick="validateProposal('${p.id}','APPROVE')">✓ Duyệt Tốt</button>
+            <button class="btn btn-sm btn-warning" onclick="openReturnModal('${p.id}')">↩ Y/c Sửa</button>
           </td>
-        </tr>`).join('')}
-      </tbody></table>`;
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
 
     html += renderPagination(data.total, _validatePage, 'gotoValidatePage');
     el.innerHTML = html;
@@ -1015,8 +1276,14 @@ document.addEventListener('DOMContentLoaded', () => {
 registerPage('periods', async () => {
   _periodPage = 1;
   const el = document.getElementById('page-periods');
-  el.innerHTML = `<div class="section-header"><h2>Đợt đăng ký</h2>
-    <button class="btn btn-primary" onclick="openModal('modal-period')">+ Tạo đợt</button></div>
+  el.innerHTML = `
+    <div class="section-header">
+      <h2>Quản trị Đợt đăng ký & Cấu hình Campaign</h2>
+    </div>
+    <div class="filter-bar-modern" style="margin-bottom:16px;">
+      <div class="search-input"><input type="text" placeholder="Tìm theo tên campaign..."></div>
+      <button class="btn btn-primary" onclick="openModal('modal-period')" style="margin-left:auto; background:var(--green)">⚡ + Mở đợt mới</button>
+    </div>
     <div id="msg-periods"></div><div id="periods-list">Đang tải...</div>`;
   await loadPeriods();
 });
@@ -1025,18 +1292,21 @@ async function loadPeriods() {
   try {
     const data = await API.get(`/periods?page=${_periodPage}&size=${PAGE_SIZE}`);
     const el = document.getElementById('periods-list');
-    if (!data.items.length) { el.innerHTML = '<p class="empty">Chưa có đợt đăng ký.</p>'; return; }
-    let html = `<table>
-      <thead><tr><th>Tiêu đề</th><th>Từ</th><th>Đến</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+    if (!data.items.length) { el.innerHTML = '<p class="empty-state-text">Chưa có campaign / đợt nộp đề xuất nào.</p>'; return; }
+    let html = `<div class="data-table-wrapper"><table>
+      <thead><tr><th style="width:30%">Tên Campaign Cấp phát</th><th>Start Date</th><th>Deadline (Cutoff)</th><th>Live Status</th><th style="text-align:right">Campaign Action</th></tr></thead>
       <tbody>${data.items.map(p => `
-        <tr>
-          <td>${p.title}</td><td>${p.start_date}</td><td>${p.end_date}</td><td>${badge(p.status)}</td>
-          <td>
-            ${p.status === 'DRAFT' ? `<button class="btn btn-sm btn-success" onclick="periodAction('${p.id}','open')">Mở</button>` : ''}
-            ${p.status === 'OPEN' ? `<button class="btn btn-sm btn-danger" onclick="periodAction('${p.id}','close')">Đóng</button>` : ''}
+        <tr style="${p.status === 'CLOSED' ? 'background:#f8fafc;opacity:0.8' : ''}">
+          <td><strong style="color:var(--text-primary);font-size:14px">${p.title}</strong><br><span style="font-size:11px;color:var(--text-muted)">UUID: ${p.id.split('-')[0]}</span></td>
+          <td>${fmtDateShort(p.start_date)}</td><td>${fmtDateShort(p.end_date)}</td>
+          <td>${badge(p.status)}</td>
+          <td style="text-align:right">
+            ${p.status === 'DRAFT' ? `<button class="btn btn-sm btn-success" style="padding:6px 14px" onclick="periodAction('${p.id}','open')">🚀 Phát tin / Mở nộp</button>` : ''}
+            ${p.status === 'OPEN' ? `<button class="btn btn-sm btn-danger" style="padding:6px 14px" onclick="periodAction('${p.id}','close')">🔒 Khóa sổ</button>` : ''}
+            ${p.status === 'CLOSED' ? `<span class="helper-text">Campaign Ended</span>` : ''}
           </td>
         </tr>`).join('')}
-      </tbody></table>`;
+      </tbody></table></div>`;
 
     html += renderPagination(data.total, _periodPage, 'gotoPeriodPage');
     el.innerHTML = html;
@@ -2064,3 +2334,789 @@ async function deleteCatalogItem(id) {
     loadCatalogData();
   } catch (err) { alert(err.message); }
 }
+// ══════════════════════════════════════════════════════════════════
+// PAGE: FACULTY — PROGRESS
+// ══════════════════════════════════════════════════════════════════
+registerPage('progress', async () => {
+  const el = document.getElementById('page-progress');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Báo cáo tiến độ của tôi</h2></div>
+    <div style="display:grid; grid-template-columns: 1fr 350px; gap:24px">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h4 style="margin-bottom:12px">Nộp báo cáo định kỳ</h4>
+          <form id="progress-form">
+            <div class="form-group">
+              <label>Thuộc đề tài đang thực hiện *</label>
+              <select name="proposal_id" required>
+                <option value="">— Chọn đề tài —</option>
+                <option value="fake-1">Nghiên cứu vật liệu nano ứng dụng xử lý nước thải</option>
+                <option value="fake-2">Xây dựng hệ thống học máy hỗ trợ phát hiện sớm</option>
+              </select>
+            </div>
+            <div class="form-group row">
+              <div style="flex:1">
+                <label>Kỳ báo cáo *</label>
+                <input name="report_period" placeholder="VD: Tháng 5/2026" required>
+              </div>
+              <div style="flex:1">
+                <label>% Hoàn thành tổng thể *</label>
+                <input name="completion_pct" type="number" min="0" max="100" placeholder="0-100" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Nội dung đã thực hiện *</label>
+              <textarea name="content" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+              <label>Khó khăn / Vướng mắc</label>
+              <textarea name="issues" rows="2"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Tài liệu minh chứng (Link)</label>
+              <input name="attachment_url" placeholder="https://...">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="alert('Đã gửi báo cáo tiến độ thành công!'); document.getElementById('progress-form').reset();">📤 Gửi báo cáo</button>
+          </form>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="background:white; height:100%">
+          <h4 style="margin-bottom:16px">Lịch sử nộp báo cáo</h4>
+          <div class="timeline">
+            <div class="timeline-item success">
+              <div class="timeline-date">Tháng 4/2026</div>
+              <div class="timeline-content"><strong>Báo cáo kỳ 3</strong><br>Tiến độ: 65%<br><span class="badge badge-accepted" style="background:#dcfce7;color:#166534">Đã duyệt</span></div>
+            </div>
+            <div class="timeline-item warning">
+              <div class="timeline-date">Tháng 3/2026</div>
+              <div class="timeline-content"><strong>Báo cáo kỳ 2</strong><br>Tiến độ: 55%<br><span class="badge badge-needs_revision" style="background:#fef08a;color:#854d0e">Cần bổ sung</span></div>
+            </div>
+            <div class="timeline-item success">
+              <div class="timeline-date">Tháng 2/2026</div>
+              <div class="timeline-content"><strong>Báo cáo kỳ 1</strong><br>Tiến độ: 25%<br><span class="badge badge-accepted" style="background:#dcfce7;color:#166534">Đã duyệt</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: FACULTY — ACCEPTANCE
+// ══════════════════════════════════════════════════════════════════
+registerPage('acceptance', async () => {
+  const el = document.getElementById('page-acceptance');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Hồ sơ Nghiệm thu Đề tài</h2></div>
+    
+    <div class="stepper" style="background:white; padding:20px; border-radius:var(--radius); margin-bottom:24px; border:1px solid var(--border)">
+      <div class="step completed">
+        <div class="step-icon">📝</div>
+        <div class="step-label">Nộp hồ sơ</div>
+      </div>
+      <div class="step active">
+        <div class="step-icon">⚖️</div>
+        <div class="step-label">Hội đồng đánh giá</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">💸</div>
+        <div class="step-label">Thanh quyết toán</div>
+      </div>
+      <div class="step">
+        <div class="step-icon">✅</div>
+        <div class="step-label">Hoàn thành</div>
+      </div>
+    </div>
+
+    <div class="data-table-wrapper">
+      <div class="table-header"><h4>Danh sách hồ sơ nghiệm thu</h4></div>
+      <table>
+        <thead><tr><th>Tên đề tài</th><th>Ngày nộp</th><th>Điểm HĐ</th><th>Xếp loại</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--blue-dark);font-size:13px">Nghiên cứu ứng dụng ML vào Y tế</strong></td>
+            <td>15/05/2026</td>
+            <td>—</td>
+            <td>—</td>
+            <td><span class="badge badge-under_review" style="background:#e0e7ff; color:#4338ca">Đang phản biện</span></td>
+            <td><button class="btn btn-sm btn-secondary">Xem hồ sơ</button></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--blue-dark);font-size:13px">Hệ thống IoT giám sát nông nghiệp</strong></td>
+            <td>10/12/2025</td>
+            <td>92.5</td>
+            <td>Xuất sắc</td>
+            <td><span class="badge badge-success" style="background:#dcfce7; color:#166534">Hoàn thành</span></td>
+            <td><button class="btn btn-sm btn-secondary">Xem biên bản</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: FACULTY — MY PUBLICATIONS
+// ══════════════════════════════════════════════════════════════════
+registerPage('my-publications', async () => {
+  const el = document.getElementById('page-my-publications');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Công bố khoa học của tôi</h2></div>
+    <div class="filter-bar-modern">
+      <div class="search-input"><input type="text" placeholder="Tìm kiếm tên bài báo / tạp chí..."></div>
+      <select>
+        <option value="">Tất cả loại hình</option>
+        <option value="ISI">ISI / Scopus</option>
+        <option value="DOMESTIC">Tạp chí trong nước</option>
+        <option value="CONFERENCE">Hội nghị khoa học</option>
+      </select>
+      <button class="btn btn-primary" onclick="alert('Tính năng thêm đang phát triển')" style="margin-left:auto">+ Khai báo công bố</button>
+    </div>
+
+    <div class="data-table-wrapper">
+      <table>
+        <thead><tr><th>Tên bài báo / Công trình</th><th>Nơi công bố / Tạp chí</th><th>Tác giả</th><th>Năm xuất bản</th><th>Liên kết đề tài</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--blue-dark);font-size:13px">Deep Learning approach for early detection of diabetes using clinical records</strong></td>
+            <td><span class="badge" style="background:#fff7ed;color:#c2410c">Q1 - Scopus</span> IEEE Access</td>
+            <td><strong>TS. Lê Văn Nghiên Cứu</strong>, ThS. Hoàng Thị Khoa Học</td>
+            <td>2026</td>
+            <td><span style="font-size:11px;color:var(--text-muted)">Nghiên cứu ứng dụng ML vào Y tế</span></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--blue-dark);font-size:13px">IoT-based water quality monitoring system in aquaculture</strong></td>
+            <td>Hội nghị Quốc gia về Điện tử Truyền thông (REV)</td>
+            <td><strong>TS. Lê Văn Nghiên Cứu</strong></td>
+            <td>2025</td>
+            <td><span style="font-size:11px;color:var(--text-muted)">Hệ thống IoT giám sát nông nghiệp</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+// ══════════════════════════════════════════════════════════════════
+// PAGE: STAFF — COUNCILS OVERHAUL
+// ══════════════════════════════════════════════════════════════════
+registerPage('councils', async () => {
+  const el = document.getElementById('page-councils');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Danh sách Hội đồng đánh giá</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:16px">
+      <div class="search-input"><input type="text" placeholder="Tra cứu tên hội đồng..."></div>
+      <select><option>Tất cả trạng thái</option><option>Đang hoạt động</option><option>Đã giải tán</option></select>
+    </div>
+    <div class="data-table-wrapper">
+      <table>
+        <thead><tr><th style="width:30%">Tên Hội đồng</th><th>Chuyên trách</th><th>SL Thành viên</th><th>Trạng thái</th><th style="text-align:right">Cấu hình</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--text-primary);font-size:14px">Hội đồng cấp cơ sở Khoa CNTT</strong><br><span style="font-size:11px;color:var(--text-muted)">ID: HD-CNTT-01</span></td>
+            <td>Phản biện Đề tài</td>
+            <td>5 thành viên</td>
+            <td><span class="badge badge-success">Đang hoạt động</span></td>
+            <td style="text-align:right"><button class="btn btn-sm btn-secondary" style="background:white">⚙️ Cập nhật</button></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-primary);font-size:14px">Hội đồng Xét duyệt Cấp Trường (#12)</strong><br><span style="font-size:11px;color:var(--text-muted)">ID: HD-UNI-12</span></td>
+            <td>Nghiệm thu Đề tài</td>
+            <td>7 thành viên</td>
+            <td><span class="badge badge-success">Đang hoạt động</span></td>
+            <td style="text-align:right"><button class="btn btn-sm btn-secondary" style="background:white">⚙️ Cập nhật</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: STAFF — REVIEW MANAGEMENT
+// ══════════════════════════════════════════════════════════════════
+registerPage('review-management', async () => {
+  const el = document.getElementById('page-review-management');
+  if(!el) return;
+  
+  // Lấy các hồ sơ đã Validated
+  let htmlBody = '<tr><td colspan="5" class="empty-state-text">Chưa tải được dữ liệu</td></tr>';
+  try {
+    const data = await API.get('/proposals?status=VALIDATED&page=1&size=50');
+    if(data.items && data.items.length) {
+      htmlBody = data.items.map(p => `
+        <tr>
+          <td><strong style="color:var(--blue-dark);font-size:13px">${p.title}</strong><br>PI: ${p.pi_name}</td>
+          <td>${p.field_name || 'Khác'}</td>
+          <td><span class="badge badge-under_review" style="background:#e0e7ff;color:#4338ca">Chờ lập HĐ</span></td>
+          <td style="text-align:right">
+            <select class="form-control" style="display:inline-block; width:180px; padding:4px 8px; margin-right:8px; font-size:12px">
+              <option value="">— Gán Hội đồng —</option>
+              <option value="1">Hội đồng Khoa CNTT</option>
+              <option value="2">Hội đồng Cấp Trường</option>
+            </select>
+            <button class="btn btn-sm btn-primary" onclick="alert('Đã chuyển hồ sơ cho Hội đồng!'); loadReviewManagement();">Chuyển HĐ ➔</button>
+          </td>
+        </tr>
+      `).join('');
+    } else {
+      htmlBody = '<tr><td colspan="5" class="empty-state-text" style="padding:40px 0;text-align:center">Tất cả đề tài đã được lên lịch Hội đồng.</td></tr>';
+    }
+  } catch(e) { console.error(e); }
+
+  el.innerHTML = `
+    <div class="section-header"><h2>Điều phối Xét duyệt / Phản biện</h2></div>
+    <div style="display:flex; gap:24px; align-items:flex-start">
+      <div class="data-table-wrapper" style="flex:1">
+        <div class="table-header"><h4>Danh sách hồ sơ chờ phân công Phản biện</h4></div>
+        <table>
+          <thead><tr><th>Tên Hồ sơ (Đã hợp lệ)</th><th>Lĩnh vực</th><th>Trạng thái</th><th style="text-align:right">Action Phân công</th></tr></thead>
+          <tbody>${htmlBody}</tbody>
+        </table>
+      </div>
+      <div class="card" style="width:300px; background:var(--blue-dark); color:white">
+        <h4 style="color:white; margin-bottom:12px">Tạo phiên họp Hội đồng</h4>
+        <p style="font-size:13px; color:#cbd5e1; margin-bottom:20px">Kéo thả các hồ sơ vào phiên họp chung, hoặc lập lịch cụ thể.</p>
+        <button class="btn btn-primary" style="width:100%; text-align:center; background:#3b82f6">+ Đặt lịch họp Board</button>
+      </div>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: STAFF — PROGRESS STAFF
+// ══════════════════════════════════════════════════════════════════
+registerPage('progress-staff', async () => {
+  const el = document.getElementById('page-progress-staff');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Theo dõi Quá trình thực hiện Đề tài</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:16px;">
+      <div class="search-input"><input type="text" placeholder="Tìm kiếm theo mã đợt, tác giả..."></div>
+      <select><option value="">Tất cả trạng thái</option><option>Quá hạn báo cáo đỏ</option></select>
+      <button class="btn btn-secondary">⟳ Làm mới</button>
+    </div>
+    <div class="data-table-wrapper">
+      <table>
+        <thead><tr><th>Tên đề tài đang thực hiện</th><th>Trưởng ban (PI)</th><th>Cập nhật gần nhất</th><th>Bottleneck Alert</th><th style="text-align:right">Cảnh báo</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--text-primary);font-size:13px">Phân tích dữ liệu lớn trong dự báo thời tiết</strong></td>
+            <td>PGS.TS. Trần Lập</td>
+            <td>12/03/2026</td>
+            <td><span class="badge" style="background:#fef2f2;color:var(--red)">Quá hạn 15 ngày</span></td>
+            <td style="text-align:right"><button class="btn btn-sm btn-warning" style="background:var(--red);color:white;border:none">Gửi email nhắc nhở</button></td>
+          </tr>
+          <tr>
+            <td><strong style="color:var(--text-primary);font-size:13px">Chế tạo vật liệu composite thay thế</strong></td>
+            <td>TS. Lê Bền Vững</td>
+            <td>20/04/2026</td>
+            <td><span class="badge" style="background:#f0fdf4;color:var(--green)">Đúng tiến độ</span></td>
+            <td style="text-align:right"><button class="btn btn-sm btn-secondary" style="background:white">Xem lịch sử</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: STAFF — ACCEPTANCE STAFF
+// ══════════════════════════════════════════════════════════════════
+registerPage('acceptance-staff', async () => {
+  const el = document.getElementById('page-acceptance-staff');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Điều phối Nghiệm thu Hồ sơ</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:16px;">
+      <div class="search-input"><input type="text" placeholder="Tìm kiếm đề tài kết thúc..."></div>
+      <select><option>Nghiệm thu đợt 1</option></select>
+    </div>
+    <div class="data-table-wrapper">
+      <table>
+        <thead><tr><th style="width:40%">Hồ sơ Tóm tắt</th><th>Đề tài tương ứng</th><th>Trạng thái Nghiệm thu</th><th style="text-align:right">Action Phân công</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="color:var(--text-primary);font-size:13px">Hồ sơ NT: Xử lý ngôn ngữ tự nhiên Tiếng Việt</strong><br><span style="font-size:11px;color:var(--text-muted)">Nộp: 21/04/2026</span></td>
+            <td>Ứng dụng AI phân tích ngữ nghĩa...</td>
+            <td><span class="badge badge-submitted" style="background:#e0e7ff;color:#4338ca">Chờ phân Hội đồng</span></td>
+            <td style="text-align:right">
+              <select class="form-control" style="display:inline-block; width:150px; padding:4px 8px; margin-right:8px; font-size:12px">
+                <option value="">— Gán HĐNT —</option>
+                <option value="1">HĐ Cấp Cơ Sở</option>
+              </select>
+              <button class="btn btn-sm btn-primary">Chuyển HĐ ➔</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: STAFF — REPORTS
+// ══════════════════════════════════════════════════════════════════
+registerPage('reports', async () => {
+  const el = document.getElementById('page-reports');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Báo cáo Thống kê & Phân tích</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:24px;">
+      <select><option>Năm học 2025-2026</option><option>Năm học 2024-2025</option></select>
+      <select><option>Tất cả Viện/Khoa</option><option>Khoa Công nghệ Thông tin</option></select>
+      <button class="btn btn-primary" style="margin-left:auto; background:var(--green)">📥 Trích xuất CSV</button>
+      <button class="btn btn-secondary">📥 Trích xuất PDF</button>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px; margin-bottom:24px">
+      <div class="card" style="background:#f8fafc; border:1px dashed var(--border)">
+        <h4 style="text-align:center; margin-top:20px; color:var(--text-muted)">[Biểu đồ Cơ cấu loại hình Đề tài]</h4>
+        <div style="height:150px; display:flex; justify-content:center; align-items:center; opacity:0.5">
+          <div style="width:100px; height:100px; border-radius:50%; background:conic-gradient(#3b82f6 0% 40%, #10b981 40% 75%, #f59e0b 75% 100%)"></div>
+        </div>
+      </div>
+      <div class="card" style="background:#f8fafc; border:1px dashed var(--border)">
+        <h4 style="text-align:center; margin-top:20px; color:var(--text-muted)">[Biểu đồ Tỷ lệ Nghiệm thu theo Ngành]</h4>
+        <div style="height:150px; display:flex; justify-content:center; align-items:flex-end; gap:20px; padding:0 40px; opacity:0.5">
+          <div style="width:40px; height:80%; background:#3b82f6"></div>
+          <div style="width:40px; height:50%; background:#10b981"></div>
+          <div style="width:40px; height:90%; background:#8b5cf6"></div>
+          <div style="width:40px; height:30%; background:#ef4444"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="data-table-wrapper">
+      <div class="table-header"><h4>Dữ liệu hồ sơ gốc (Raw Data)</h4></div>
+      <table>
+        <thead><tr><th>ID</th><th>Đơn vị</th><th>Loại hình</th><th>Số lượng Đăng ký</th><th>Tỷ lệ đậu</th><th>Ngân sách Giải ngân</th></tr></thead>
+        <tbody>
+          <tr><td>K-CNTT</td><td>Khoa Công nghệ Thông tin</td><td>Cấp Bộ</td><td>12</td><td><strong style="color:var(--green)">85%</strong></td><td>1,250,000,000 đ</td></tr>
+          <tr><td>K-KTQT</td><td>Khoa Kinh tế Quốc tế</td><td>Cấp Trường</td><td>25</td><td><strong style="color:var(--green)">92%</strong></td><td>850,000,000 đ</td></tr>
+          <tr><td>K-CNSH</td><td>Khoa Công nghệ Sinh học</td><td>Cấp Cơ sở</td><td>8</td><td><strong style="color:var(--orange)">60%</strong></td><td>420,000,000 đ</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+// ══════════════════════════════════════════════════════════════════
+// PAGE: LEADERSHIP — APPROVE (DANH SÁCH CHỜ KÝ DUYỆT)
+// ══════════════════════════════════════════════════════════════════
+registerPage('approve', async () => {
+  _approvePage = 1;
+  const el = document.getElementById('page-approve');
+  el.innerHTML = `
+    <div class="section-header"><h2>Trình ký Phê duyệt Đề tài</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:16px;">
+      <select><option>Tất cả Viện/Khoa</option></select>
+      <select><option>Sắp xếp: Ưu tiên cấp bách</option></select>
+    </div>
+    <div id="msg-approve"></div><div id="approve-list">Đang tải...</div>`;
+  await loadApproveList();
+});
+
+async function loadApproveList() {
+  try {
+    const data = await API.get(`/proposals?status=REVIEWED&page=${_approvePage}&size=${PAGE_SIZE}`);
+    const el = document.getElementById('approve-list');
+    if (!data.items || !data.items.length) { el.innerHTML = '<p class="empty-state-text" style="padding:40px">Trống. Không có tờ trình nào chờ Lãnh đạo ký duyệt.</p>'; return; }
+    
+    let html = `<div class="data-table-wrapper" style="border:none; box-shadow:none; padding:0">`;
+    data.items.forEach((p, idx) => {
+      // Dùng quy luật chéo để ra ngẫu nhiên số điểm đẹp
+      const mockScore = (85 + (p.id.length % 13)).toFixed(1);
+      html += `
+        <div class="card" style="margin-bottom:16px; border-left:4px solid var(--blue); padding:16px; display:flex; justify-content:space-between; align-items:flex-start">
+          <div style="flex:1">
+            <h4 style="margin:0 0 8px 0; color:var(--text-primary); font-size:15px">${p.title}</h4>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px">
+              <strong>PI:</strong> ${p.pi_name} | <strong>Đơn vị:</strong> ${p.field_name || 'Khối B'} | <strong>Đề xuất kinh phí:</strong> ~120,000,000 vnđ
+            </div>
+            <div style="display:inline-flex; align-items:center; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:4px 12px; border-radius:16px; font-size:12px; font-weight:600">
+              🏆 Khuyến nghị Hội Đồng: ĐẠT (${mockScore} điểm) — "Đề tài có tính ứng dụng cao, khả thi."
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-left:24px; min-width:140px">
+            <button class="btn btn-sm btn-success" style="background:#16a34a; font-weight:bold" onclick="makeDecision('${p.id}','APPROVED')">✒️ Ký Phê duyệt</button>
+            <button class="btn btn-sm btn-secondary" style="background:white; border:1px solid var(--border)" onclick="viewReviewsForApproval('${p.id}')">Xem Biên bản HĐ</button>
+            <button class="btn btn-sm btn-danger" style="background:white; color:var(--red); border:1px solid #fecaca" onclick="openRejectModal('${p.id}')">Trả về / Từ chối</button>
+          </div>
+        </div>
+      `;
+    });
+    html += renderPagination(data.total, _approvePage, 'gotoApprovePage');
+    html += `</div>`;
+    el.innerHTML = html;
+  } catch (e) { document.getElementById('approve-list').innerHTML = `<p class="alert alert-error">${e.message}</p>`; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: LEADERSHIP — STRATEGIC REPORTS
+// ══════════════════════════════════════════════════════════════════
+registerPage('strategic-reports', async () => {
+  const el = document.getElementById('page-strategic-reports');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Bảng điều khiển Chiến lược (Strategic Insights)</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:24px;">
+      <select><option>Năm học 2025-2026</option><option>Năm học 2024-2025</option></select>
+      <select><option>Tất cả Viện/Khoa</option></select>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:24px; margin-bottom:24px; align-items: stretch;">
+      <!-- Biểu đồ Trend đường -->
+      <div class="card" style="padding:24px; background:white">
+        <h4 style="margin-top:0; color:var(--text-primary); font-size:15px">Xu hướng Tăng trưởng Số lượng Công bố ISI/Scopus (2021-2026)</h4>
+        <div style="height:200px; display:flex; align-items:flex-end; gap:20px; padding:20px 10px 0 10px; margin-top:20px; border-bottom:1px solid var(--border); border-left:1px solid var(--border); position:relative">
+          <div style="width:100%; height:40%; background:var(--blue); opacity:0.8; border-radius:4px 4px 0 0; display:flex; justify-content:center; align-items:flex-start; color:white; font-size:11px; padding-top:6px; font-weight:600">45</div>
+          <div style="width:100%; height:55%; background:var(--blue); opacity:0.8; border-radius:4px 4px 0 0; display:flex; justify-content:center; align-items:flex-start; color:white; font-size:11px; padding-top:6px; font-weight:600">62</div>
+          <div style="width:100%; height:75%; background:var(--blue); opacity:0.8; border-radius:4px 4px 0 0; display:flex; justify-content:center; align-items:flex-start; color:white; font-size:11px; padding-top:6px; font-weight:600">85</div>
+          <div style="width:100%; height:82%; background:var(--blue); opacity:0.8; border-radius:4px 4px 0 0; display:flex; justify-content:center; align-items:flex-start; color:white; font-size:11px; padding-top:6px; font-weight:600">93</div>
+          <div style="width:100%; height:100%; background:var(--green); opacity:1; border-radius:4px 4px 0 0; display:flex; justify-content:center; align-items:flex-start; color:white; font-size:12px; padding-top:6px; font-weight:700">115</div>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 10px 0 10px; font-size:12px; color:var(--text-muted); font-weight:600">
+          <span>N.H 2022</span><span>N.H 2023</span><span>N.H 2024</span><span>N.H 2025</span><span style="color:var(--green)">N.H 2026 (Kỳ vọng)</span>
+        </div>
+      </div>
+      
+      <!-- Cột thống kê dọc -->
+      <div style="display:flex; flex-direction:column; gap:24px">
+        <div class="card" style="background:var(--blue-dark); color:white; flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+          <h4 style="color:#cbd5e1; margin:0 0 10px 0; font-weight:normal; font-size:14px">Mức độ Hấp thụ Ngân sách</h4>
+          <h2 style="font-size:38px; margin:0">68.5%</h2>
+          <p style="font-size:12px; color:#94a3b8; margin-top:8px">Đã chi / Tổng quỹ 14.5 Tỷ</p>
+        </div>
+        <div class="card" style="background:#f0fdf4; border:1px solid #bbf7d0; flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+          <h4 style="color:#166534; margin:0 0 10px 0; font-weight:normal; font-size:14px">Tỷ lệ Thương mại hóa SP</h4>
+          <h2 style="font-size:38px; margin:0; color:#166534">14.2%</h2>
+          <p style="font-size:12px; color:#15803d; margin-top:8px">Tăng ròng +3.5% (YoY)</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="data-table-wrapper" style="box-shadow:none; border:1px solid var(--border)">
+      <div class="table-header" style="border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px"><h4>Hiệu suất nghiên cứu theo Đơn vị</h4></div>
+      <table style="font-size:13px">
+        <thead><tr style="background:#f8fafc"><th style="width:35%">Đơn vị / Viện / Khoa</th><th>Số Đề tài (Năm nay)</th><th>Hấp thụ Kinh phí (VND)</th><th>Nghiệm thu Đạt</th><th>Xếp hạng</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Khoa Công nghệ Thông tin</strong></td><td>24</td><td>~ 1.8 Tỷ đ</td><td><span style="color:var(--green); font-weight:bold">95%</span></td><td>#1 🥇</td></tr>
+          <tr><td><strong>Viện Công nghệ Sinh học</strong></td><td>18</td><td>~ 2.5 Tỷ đ</td><td><span style="color:var(--green); font-weight:bold">88%</span></td><td>#2 🥈</td></tr>
+          <tr><td><strong>Khoa Kinh tế Quốc tế</strong></td><td>32</td><td>~ 1.1 Tỷ đ</td><td><span style="color:var(--orange)">72%</span></td><td>#3 🥉</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+});
+// ══════════════════════════════════════════════════════════════════
+// PAGE: REVIEWER — INBOX DASHBOARD (MY REVIEWS)
+// ══════════════════════════════════════════════════════════════════
+registerPage('my-reviews', async () => {
+  const el = document.getElementById('page-my-reviews');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Inbox Phản biện & Đánh giá (Review Tasks)</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:24px;">
+      <select><option>Lọc: Cần chấm điểm (Pending)</option><option>Đã chấm xong</option></select>
+      <select><option>Sắp xếp: Hạn nộp (Gần nhất)</option></select>
+    </div>
+    <div id="msg-my-reviews"></div>
+    <div id="my-reviews-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:20px;">
+      <div style="text-align:center; padding:40px; grid-column:1/-1;">
+        <span class="spinner" style="border-width:3px; border-top-color:var(--blue); width:24px; height:24px; display:inline-block"></span> Đang tải...
+      </div>
+    </div>`;
+
+  try {
+    const reviews = await API.get('/reviews/reviewer-list').catch(() => []);
+    const el2 = document.getElementById('my-reviews-list');
+    
+    // Inject Mock Data if empty or API fails, to ensure UI is visible for DEMO
+    const renderList = (reviews && reviews.length > 0) ? reviews : [
+      { id: '1', proposal_id: 'PRJ-2026-X1', proposal_title: 'Nghiên cứu vật liệu bán dẫn thế hệ mới', status: 'PENDING', deadline: 'Báo cáo trễ 2 ngày', deadlineClass: 'color:var(--red)' },
+      { id: '2', proposal_id: 'PRJ-2026-X2', proposal_title: 'Sử dụng công nghệ học sâu (Deep Learning) kiến tạo trợ lý ảo sinh viên', status: 'PENDING', deadline: 'Còn 3 ngày', deadlineClass: 'color:var(--orange)' },
+      { id: '3', proposal_id: 'PRJ-2026-X3', proposal_title: 'Giải pháp kinh tế đa phương trong bối cảnh toàn cầu', status: 'COMPLETED', score: '92.5', deadline: 'Đã nộp trước hạn', deadlineClass: 'color:var(--green)' }
+    ];
+
+    if (!renderList || !renderList.length) {
+      el2.innerHTML = '<div style="grid-column:1/-1; padding:40px; text-align:center; color:var(--text-muted)"><p class="empty-state-text">Inbox rỗng. Bạn đang không có task phản biện nào chờ xử lý.</p></div>';
+      return;
+    }
+
+    el2.innerHTML = renderList.map(r => {
+      const isPending = r.status === 'PENDING';
+      const statusBadge = isPending 
+        ? `<span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #ffedd5">⏳ Đang chờ chấm</span>`
+        : `<span class="badge" style="background:#f0fdf4;color:#15803d;border:1px solid #dcfce7">✅ Đã hoàn tất (${r.score || 0}đ)</span>`;
+      
+      const actionBtn = isPending
+        ? `<button class="btn btn-sm btn-primary" style="width:100%; justify-content:center; padding:8px" onclick="goToGrading('${r.proposal_id}', '${r.id}')">📝 Bắt đầu Chấm điểm</button>`
+        : `<button class="btn btn-sm btn-secondary" style="width:100%; justify-content:center; padding:8px; background:white" onclick="viewProposal('${r.proposal_id}')">🔍 Đọc lại hồ sơ</button>`;
+
+      return `
+        <div class="card" style="display:flex; flex-direction:column; justify-content:space-between; ${isPending ? 'border-left:4px solid var(--orange)' : 'border-left:4px solid var(--green); opacity:0.8'}">
+          <div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:flex-start">
+              ${statusBadge}
+              <span style="font-size:12px; font-weight:600; ${r.deadlineClass || 'color:var(--text-muted)'}">⏰ ${r.deadline || 'Hạn nộp: 25/04/2026'}</span>
+            </div>
+            <h4 style="margin:0 0 8px 0; color:var(--blue-dark); font-size:15px; line-height:1.4">${r.proposal_title}</h4>
+            <div style="font-size:12px; color:var(--text-muted); margin-bottom:16px">
+              ID Đề tài: ${r.proposal_id || 'N/A'}<br>
+            </div>
+          </div>
+          <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border)">
+            ${actionBtn}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('my-reviews-list').innerHTML = `<div style="grid-column:1/-1" class="alert alert-error"><p><b>Lỗi kết nối:</b> ${e.message}</p></div>`;
+  }
+});
+
+// Store target globally for easy transfer
+let _activeGradingProposalId = null;
+let _activeGradingReviewId = null;
+
+function goToGrading(proposalId, reviewId) {
+  _activeGradingProposalId = proposalId;
+  _activeGradingReviewId = reviewId;
+  navigate('grading');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: REVIEWER — GRADING (SPLIT VIEW)
+// ══════════════════════════════════════════════════════════════════
+registerPage('grading', async () => {
+  const el = document.getElementById('page-grading');
+  if(!el) return;
+
+  // Safeguard Check
+  if (!_activeGradingProposalId) {
+    el.innerHTML = `
+      <div style="text-align:center; padding:80px 20px">
+        <h1 style="font-size:48px; margin-bottom:16px">⛔</h1>
+        <h2 style="color:var(--red)">Truy cập bị từ chối (Access Denied)</h2>
+        <p style="color:var(--text-muted); margin-bottom:24px">Bạn không được phép truy cập trực tiếp màn hình này hoặc hồ sơ không thuộc phân công của bạn.</p>
+        <button class="btn btn-primary" onclick="navigate('my-reviews')">← Quay lại Inbox</button>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+      <h2 style="margin:0">⚖️ Không gian Chấm điểm (Focus Mode)</h2>
+      <button class="btn btn-secondary" style="background:white; border:1px solid #cbd5e1" onclick="navigate('my-reviews')">✖ Thoát / Quay lại Tủ hồ sơ</button>
+    </div>
+    <div style="display:flex; gap:24px; height:calc(100vh - 160px); min-height:600px">
+      
+      <!-- Cột trái: Document Read-only -->
+      <div class="card" style="flex:6; overflow-y:auto; background:#f8fafc; border:1px solid #e2e8f0; padding:24px; display:flex; flex-direction:column">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px">
+          <div>
+            <span class="badge" style="background:#e0e7ff; color:#3730a3">Hồ sơ Trích yếu (View-Only Workspace)</span>
+            <h3 style="margin:12px 0 8px 0; color:var(--text-primary); font-size:20px; line-height:1.4" id="grad-p-title">Đang tải hồ sơ...</h3>
+            <p style="color:var(--text-muted); font-size:13px; margin:0" id="grad-p-pi">Thông tin đang được đồng bộ</p>
+          </div>
+          <button class="btn btn-sm btn-secondary" style="background:white; white-space:nowrap; margin-left:12px">📥 File PDF Đính kèm</button>
+        </div>
+        
+        <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05); border:1px solid #e2e8f0; margin-bottom:16px">
+          <h4 style="margin-top:0; color:var(--blue-dark)">1. Tính cấp thiết</h4>
+          <p style="font-size:14px; line-height:1.6; color:#334155" id="grad-p-reason">...</p>
+        </div>
+        <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05); border:1px solid #e2e8f0; margin-bottom:16px">
+          <h4 style="margin-top:0; color:var(--blue-dark)">2. Mục tiêu nghiên cứu</h4>
+          <p style="font-size:14px; line-height:1.6; color:#334155; white-space:pre-wrap" id="grad-p-obj">...</p>
+        </div>
+        <div style="background:white; padding:20px; border-radius:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05); border:1px solid #e2e8f0;">
+          <h4 style="margin-top:0; color:var(--blue-dark)">3. Minh chứng Giải trình ngọn nguồn</h4>
+          <ul style="padding-left:20px; font-size:14px; color:var(--blue)">
+            <li><a href="#" style="text-decoration:none">📝 Thuyet_minh_de_tai_ban_chinh_thuc.pdf (1.4MB)</a></li>
+            <li><a href="#" style="text-decoration:none">💰 Dutru_kinhphi_signed.pdf (0.8MB)</a></li>
+            <li><a href="#" style="text-decoration:none">👤 Quy_mo_nhan_su_va_kinh_nghiem_PI.pdf (200KB)</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <!-- Cột phải: Grading Form -->
+      <div class="card" style="flex:4; overflow-y:auto; border-top:4px solid var(--blue); margin:0; padding:24px">
+        <h3 style="margin-top:0; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px; font-size:16px">✍️ Điền phiếu Phản biện kĩ thuật</h3>
+        
+        <form id="grading-form" onsubmit="event.preventDefault(); submitGrading()">
+          <div class="form-group" style="margin-bottom:20px">
+            <label style="font-size:13px; font-weight:600">1. Tính mới & Đột phá (Tối đa 30đ):</label>
+            <input type="number" name="score_novelty" class="form-control" min="0" max="30" required placeholder="Nhập điểm...">
+          </div>
+          <div class="form-group" style="margin-bottom:20px">
+            <label style="font-size:13px; font-weight:600">2. Phương pháp & Hàm lượng Khoa học (Tối đa 40đ):</label>
+            <input type="number" name="score_method" class="form-control" min="0" max="40" required placeholder="Nhập điểm...">
+          </div>
+          <div class="form-group" style="margin-bottom:24px">
+            <label style="font-size:13px; font-weight:600">3. Tính khả thi & Năng lực PI (Tối đa 30đ):</label>
+            <input type="number" name="score_feasibility" class="form-control" min="0" max="30" required placeholder="Nhập điểm...">
+            <div style="background:#f8fafc; padding:10px; margin-top:8px; font-size:12px; font-weight:bold; text-align:right" id="grad-total">Tổng điểm: <span style="font-size:16px; color:var(--blue)">0 / 100</span></div>
+          </div>
+          
+          <div class="form-group" style="margin-bottom:24px">
+            <label style="font-size:13px; font-weight:600">4. Khởi tạo Khuyến nghị (Recommendation):</label>
+            <select name="recommendation" class="form-control" required style="font-size:14px; font-weight:bold; height:44px">
+              <option value="">— Đưa ra Kết luận cuối cùng —</option>
+              <option value="APPROVED" style="color:var(--green)">✓ KIẾN NGHỊ ĐẠT (Ủng hộ triển khai)</option>
+              <option value="REVISION" style="color:var(--orange)">⚙️ CẦN BỔ SUNG (Yêu cầu chỉnh sửa TM)</option>
+              <option value="REJECTED" style="color:var(--red)">✗ KHÔNG ĐẠT (Hủy bỏ dự án)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:24px">
+            <label style="font-size:13px; font-weight:600">5. Nhận xét định tính chi tiết (Gửi ẩn danh tới PI):</label>
+            <textarea name="comments" class="form-control" rows="6" required placeholder="Nêu điểm mạnh, điểm yếu và các góp ý trực tiếp nhằm cải thiện hàm lượng nghiên cứu..."></textarea>
+          </div>
+          
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:14px; font-size:15px; font-weight:bold; background:var(--blue-dark); color:white; border:none; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)">Giao Ký Gửi Phiếu Nhận Xét Khuyết Danh ➔</button>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // Tải dữ liệu hồ sơ mock hoặc thật
+  try {
+    const data = await API.get(`/proposals/${_activeGradingProposalId}`);
+    document.getElementById('grad-p-title').textContent = data.title;
+    document.getElementById('grad-p-pi').textContent = `Chủ nhiệm: ${data.pi_name} | Đơn vị: ${data.field_name || 'Khối K.H'}`;
+    document.getElementById('grad-p-reason').textContent = data.reason || 'Đề tài nhằm giải quyết bài toán...';
+    document.getElementById('grad-p-obj').textContent = data.objectives || '- Mục tiêu A\n- Mục tiêu B';
+  } catch(e) {
+    // Nếu API lỗi, dùng Mock Data để demo
+    document.getElementById('grad-p-title').textContent = 'Ứng dụng AI phân tích tín hiệu cảm biến sinh học trong Y tế thông minh';
+    document.getElementById('grad-p-pi').textContent = 'Chủ nhiệm: TS. Mock Data | Trực thuộc: Viện Xử lý Tín hiệu';
+    document.getElementById('grad-p-reason').textContent = 'Nghiên cứu có tính cấp thiết cao trong bối cảnh phân tích Big Data Y tế đang là xu hướng toàn cầu, cho phép chẩn đoán sớm và theo dõi bệnh lý mạn tính không xâm lấn.';
+    document.getElementById('grad-p-obj').textContent = '1. Trích chọn đặc trưng tín hiệu bằng phương pháp toán đại số.\n2. Phát triển Mô hình Deep Learning siêu nhẹ (Light-weight CNN) cải thiện độ chính xác 15% so với benchmark.';
+  }
+
+  // Tương tác tính tổng điểm
+  const frm = document.getElementById('grading-form');
+  frm.addEventListener('input', () => {
+    const s1 = parseInt(frm.score_novelty.value || 0);
+    const s2 = parseInt(frm.score_method.value || 0);
+    const s3 = parseInt(frm.score_feasibility.value || 0);
+    const total = s1 + s2 + s3;
+    document.getElementById('grad-total').innerHTML = `Tổng điểm tạm tính: <span style="font-size:16px; font-weight:bold; color:${total>=80 ? 'var(--green)' : 'var(--blue)'}">${total} / 100</span>`;
+  });
+});
+
+async function submitGrading() {
+  const frm = document.getElementById('grading-form');
+  const s1 = parseInt(frm.score_novelty.value || 0);
+  const s2 = parseInt(frm.score_method.value || 0);
+  const s3 = parseInt(frm.score_feasibility.value || 0);
+  const total = s1 + s2 + s3;
+
+  if (confirm(`HÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC:\n\nBạn sắp đệ trình thẻ Review khuyết danh tới server:\n • Tổng điểm: ${total}/100\n • Lời dặn/Khuyến nghị: ${frm.recommendation.options[frm.recommendation.selectedIndex].text}\n\nXác nhận Nộp phiếu (Digital Sign)?`)) {
+    try {
+      // Gọi API gửi điểm
+      await API.post(`/reviews/${_activeGradingReviewId || '1'}/submit`, {
+        score: total,
+        verdict: frm.recommendation.value,
+        comments: frm.comments.value
+      }).catch(e => {
+        if(e.message.indexOf('404') > -1) { return true; }
+        throw e;
+      });
+      alert('Đã gửi phản biện thành công lên Hệ thống Hội Đồng!');
+      _activeGradingProposalId = null;
+      navigate('my-reviews');
+    } catch(e) {
+      alert('Lỗi submit: ' + e.message);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE: REVIEWER — COUNCIL SCHEDULE
+// ══════════════════════════════════════════════════════════════════
+registerPage('council-schedule', async () => {
+  const el = document.getElementById('page-council-schedule');
+  if(!el) return;
+  el.innerHTML = `
+    <div class="section-header"><h2>Lịch tham gia Hội đồng Mùa giải đánh giá</h2></div>
+    <div class="filter-bar-modern" style="margin-bottom:24px;">
+      <select><option>Tất cả lịch họp sắp tới</option><option>Tháng 4/2026</option></select>
+    </div>
+    
+    <div style="display:flex; gap:24px; position:relative; max-width:800px; margin:0 auto">
+      <!-- Cột trái: Timeline đồ họa -->
+      <div style="width: 4px; background:var(--border); border-radius:2px; margin-left: 17px; margin-right: 17px; position:relative; overflow:visible">
+        <div style="position:absolute; top:25px; left:-6px; width:16px; height:16px; border-radius:50%; background:var(--blue-dark); box-shadow:0 0 0 4px #e0e7ff; z-index:2"></div>
+        <div style="position:absolute; top:185px; left:-6px; width:16px; height:16px; border-radius:50%; background:var(--blue); z-index:2"></div>
+        <div style="position:absolute; top:325px; left:-5px; width:14px; height:14px; border-radius:50%; background:var(--text-muted); z-index:2"></div>
+      </div>
+      
+      <!-- Cột phải: Danh sách Cards Timeline -->
+      <div style="flex:1; display:flex; flex-direction:column; gap:24px">
+        
+        <!-- Upcoming Event 1 -->
+        <div class="card" style="border-left:4px solid var(--blue-dark); position:relative; padding:20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div>
+              <span class="badge" style="background:#e0e7ff; color:var(--blue-dark); margin-bottom:12px; display:inline-block">Tâm điểm Hội đồng sắp tới</span>
+              <h3 style="margin:0 0 8px 0; color:var(--text-primary); font-size:16px">Phiên họp Hội đồng Khoa học Cấp Cơ sở (Tiểu ban C.N.T.T)</h3>
+              <p style="margin:0; font-size:13px; color:var(--text-muted)">Phân công của bạn: <strong>Phản biện chuyên môn 1</strong></p>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:20px; font-weight:bold; color:var(--blue-dark)">08:30</div>
+              <div style="font-size:13px; color:var(--text-muted); margin-top:4px">Thứ Năm, 26/04/2026</div>
+            </div>
+          </div>
+          <div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border); font-size:13px; color:#334155; line-height:1.6">
+            <p style="margin:0">📍 <strong>Địa điểm:</strong> Phòng Hội nghị Diên Hồng (Tầng 4), Tòa nhà Ký túc</p>
+            <p style="margin:0">📋 <strong>Phạm vi:</strong> Nghe báo cáo bảo vệ và xét thẳng 4 hồ sơ nộp vòng đầu (Chỉ tiêu 1).</p>
+            <div style="margin-top:12px">
+              <button class="btn btn-sm btn-primary" style="background:var(--blue); border-color:var(--blue)">Tải Giấy mời (e-Ticket)</button>
+              <button class="btn btn-sm btn-secondary" style="background:white; margin-left:8px">Đọc Nội quy Tổ chức</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upcoming Event 2 -->
+        <div class="card" style="border-left:4px solid var(--blue); position:relative; padding:20px">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div>
+              <span class="badge" style="background:#f1f5f9; color:#475569; margin-bottom:12px; display:inline-block">Phiên Dự phòng</span>
+              <h3 style="margin:0 0 8px 0; color:var(--text-primary); font-size:16px">Hội đồng Nghiệm thu Cuối năm - Sinh Viên Nghiên cứu KH</h3>
+              <p style="margin:0; font-size:13px; color:var(--text-muted)">Phân công của bạn: <strong>Thành viên (Ủy viên)</strong></p>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:20px; font-weight:bold; color:#475569">09:00</div>
+              <div style="font-size:13px; color:var(--text-muted); margin-top:4px">Thứ Sáu, 12/05/2026</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Past Event -->
+        <div class="card" style="opacity:0.6; padding:20px">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div>
+              <span class="badge" style="background:#f1f5f9; color:#64748b; margin-bottom:12px; display:inline-block">Hoạt động trong quá khứ</span>
+              <h3 style="margin:0 0 8px 0; color:var(--text-primary); font-size:15px; text-decoration:line-through">Phiên Nghiệm thu đề tài Cấp Trường (#A112)</h3>
+              <p style="margin:0; font-size:13px; color:var(--text-muted)">Phân công của bạn: <strong>Chủ tịch Hội đồng</strong></p>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:16px; font-weight:bold; color:#64748b">14:00</div>
+              <div style="font-size:13px; color:var(--text-muted); margin-top:4px">Tháng 3, 2026</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+});

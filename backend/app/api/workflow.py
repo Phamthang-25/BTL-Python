@@ -157,6 +157,63 @@ async def list_reviews_for_proposal(
 # Note: Progress report endpoints moved to api/progress.py
 
 
+@router.get("/reviews/reviewer-stats")
+async def reviewer_stats(
+    current_user: User = Depends(require_roles("REVIEWER")),
+    db: Session = Depends(get_db),
+):
+    """Reviewer dashboard: total assigned, pending, completed reviews and council schedule."""
+    from app.models.council import CouncilMember
+
+    reviews = db.query(Review).filter(Review.reviewer_id == current_user.id).all()
+    total_assigned = len(reviews)
+    completed = sum(1 for r in reviews if r.status == "SUBMITTED")
+    pending = total_assigned - completed
+
+    # Acceptance reviews
+    acc_reviews = db.query(AcceptanceReview).filter(AcceptanceReview.reviewer_id == current_user.id).all()
+    acc_total = len(acc_reviews)
+    acc_completed = sum(1 for r in acc_reviews if r.status == "SUBMITTED")
+    acc_pending = acc_total - acc_completed
+
+    # Council schedule
+    council_ids = (
+        db.query(CouncilMember.council_id)
+        .filter(CouncilMember.user_id == current_user.id)
+        .subquery()
+    )
+    councils = (
+        db.query(Council)
+        .options(joinedload(Council.proposal))
+        .filter(Council.id.in_(council_ids))
+        .order_by(Council.scheduled_date.desc().nullslast())
+        .limit(10)
+        .all()
+    )
+    council_list = [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "council_type": c.council_type,
+            "status": c.status,
+            "scheduled_date": c.scheduled_date.isoformat() if c.scheduled_date else None,
+            "location": c.location,
+            "proposal_title": c.proposal.title if c.proposal else None,
+        }
+        for c in councils
+    ]
+
+    return {
+        "total_assigned": total_assigned,
+        "pending": pending,
+        "completed": completed,
+        "acc_total": acc_total,
+        "acc_pending": acc_pending,
+        "acc_completed": acc_completed,
+        "councils": council_list,
+    }
+
+
 # ══════════════════════════════════════════════════════════════════
 # ACCEPTANCE
 # ══════════════════════════════════════════════════════════════════

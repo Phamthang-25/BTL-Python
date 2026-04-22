@@ -393,23 +393,7 @@ async def validate_dossier(
     return _dossier_to_resp(_load_dossier(db, dossier_id))
 
 
-# ══════════════════════════════════════════════════════════════════
-# REVIEWER — Score / Review dossier
-# ══════════════════════════════════════════════════════════════════
 
-@router.get("/my-reviews/list", response_model=List[AcceptanceReviewResponse])
-async def my_acceptance_reviews(
-    current_user: User = Depends(require_roles("REVIEWER")),
-    db: Session = Depends(get_db),
-):
-    """Get all acceptance reviews assigned to the current reviewer."""
-    reviews = (
-        db.query(AcceptanceReview)
-        .options(joinedload(AcceptanceReview.reviewer))
-        .filter(AcceptanceReview.reviewer_id == current_user.id)
-        .all()
-    )
-    return [_acc_review_to_resp(r) for r in reviews]
 
 
 @router.post("/{dossier_id}/reviews", response_model=AcceptanceReviewResponse, status_code=201)
