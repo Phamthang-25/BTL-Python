@@ -1,6 +1,6 @@
 """Role model — defines system roles for RBAC.
 
-MVP roles: ADMIN, STAFF, LEADERSHIP, FACULTY, REVIEWER.
+MVP roles: ADMIN, STAFF, LEADERSHIP, FACULTY, REVIEWER, STUDENT.
 Stored in DB for extensibility; seeded on first startup.
 """
 

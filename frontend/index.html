@@ -6,41 +6,56 @@
   <title>SciRes — Đăng nhập</title>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    .login-box h2 { color: #1e293b; }
-    .login-box .subtitle { color: #64748b; font-size: 13px; margin-bottom: 20px; text-align: center; }
-    .demo-accounts { margin-top: 16px; background: #f8fafc; border-radius: 6px; padding: 12px; }
-    .demo-accounts h4 { font-size: 12px; color: #64748b; margin-bottom: 8px; }
-    .demo-accounts button { display: block; width: 100%; margin-bottom: 4px; padding: 6px; background: #e2e8f0; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; text-align: left; }
-    .demo-accounts button:hover { background: #cbd5e1; }
+    #login-screen {
+      background: #f0f0f0;
+      position: relative;
+    }
+    .login-box .subtitle { color: #777; font-size: 13px; margin-bottom: 24px; text-align: center; }
+    .login-box .logo-icon { display: flex; justify-content: center; margin-bottom: 12px; }
+    .login-box .logo-icon span { font-size: 48px; }
+    .login-divider { display: flex; align-items: center; gap: 10px; margin: 20px 0 16px; }
+    .login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: #e0e0e0; }
+    .login-divider span { font-size: 12px; color: #999; white-space: nowrap; }
+    .login-footer { text-align: center; margin-top: 20px; font-size: 12px; color: #999; }
+    .demo-accounts { display: none; }
   </style>
 </head>
 <body>
   <div id="login-screen">
     <div class="login-box">
-      <h2>🔬 SciRes</h2>
+      <div class="logo-icon"><span>🔬</span></div>
+      <h2>Đăng nhập</h2>
       <p class="subtitle">Hệ thống Quản lý Nghiên cứu Khoa học</p>
       <div id="login-msg"></div>
       <form id="login-form">
         <div class="form-group">
-          <label>Email</label>
+          <label>Tài khoản</label>
           <input type="email" id="email" placeholder="email@university.edu.vn" required>
         </div>
         <div class="form-group">
           <label>Mật khẩu</label>
-          <input type="password" id="password" placeholder="password123" required>
+          <input type="password" id="password" placeholder="••••••••" required>
         </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:4px">Đăng nhập</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#777; cursor:pointer">
+            <input type="checkbox" style="width:auto; accent-color:var(--primary)"> Ghi nhớ
+          </label>
+          <a href="#" style="font-size:12px; color:var(--primary); text-decoration:none">Quên mật khẩu?</a>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%; padding:11px; font-size:14px">Đăng nhập</button>
       </form>
 
+      <div class="login-footer">
+        © 2026 SciRes — PTIT Research Management
+      </div>
+
       <div class="demo-accounts">
-        <h4>🧪 Tài khoản demo (pass: password123)</h4>
-        <button onclick="fillLogin('admin@university.edu.vn')">Admin — admin@university.edu.vn</button>
-        <button onclick="fillLogin('staff@university.edu.vn')">Staff (P.KHCN) — staff@university.edu.vn</button>
-        <button onclick="fillLogin('leader@university.edu.vn')">Lãnh đạo — leader@university.edu.vn</button>
-        <button onclick="fillLogin('faculty1@university.edu.vn')">Giảng viên — faculty1@university.edu.vn</button>
-        <button onclick="fillLogin('faculty2@university.edu.vn')">Giảng viên — faculty2@university.edu.vn</button>
-        <button onclick="fillLogin('reviewer1@university.edu.vn')">Phản biện — reviewer1@university.edu.vn</button>
-        <button onclick="fillLogin('reviewer2@university.edu.vn')">Phản biện — reviewer2@university.edu.vn</button>
+        <button onclick="fillLogin('admin@university.edu.vn')">Admin</button>
+        <button onclick="fillLogin('staff@university.edu.vn')">Staff</button>
+        <button onclick="fillLogin('leader@university.edu.vn')">Leader</button>
+        <button onclick="fillLogin('faculty1@university.edu.vn')">Faculty</button>
+        <button onclick="fillLogin('student1@university.edu.vn')">Student</button>
+        <button onclick="fillLogin('reviewer1@university.edu.vn')">Reviewer</button>
       </div>
     </div>
   </div>

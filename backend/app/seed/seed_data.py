@@ -42,6 +42,7 @@ def seed():
             "LEADERSHIP": Role(code="LEADERSHIP", name="Lãnh đạo", description="Ban Giám hiệu / Lãnh đạo trường", sort_order=3),
             "FACULTY": Role(code="FACULTY", name="Giảng viên", description="Giảng viên / Nghiên cứu viên", sort_order=4),
             "REVIEWER": Role(code="REVIEWER", name="Phản biện", description="Thành viên hội đồng phản biện", sort_order=5),
+            "STUDENT": Role(code="STUDENT", name="Sinh viên", description="Sinh viên tham gia nghiên cứu khoa học", sort_order=6),
         }
         db.add_all(roles.values())
         db.flush()
@@ -270,6 +271,15 @@ def seed():
                 academic_title="Tiến sĩ",
                 department_id=departments[0].id,
                 phone="0978901234",
+            ),
+            # Students
+            User(
+                email="student1@university.edu.vn",
+                hashed_password=default_pw,
+                full_name="Phạm Minh Sinh Viên",
+                role_id=roles["STUDENT"].id,
+                department_id=departments[0].id,
+                phone="0989012345",
             ),
         ]
         db.add_all(users)

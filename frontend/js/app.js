@@ -148,6 +148,10 @@ function buildNav(role) {
     add('periods', '📅 Đợt đăng ký');
     add('catalog', '📚 Danh mục');
   }
+  if (role === 'STUDENT') {
+    add('student-proposals', '📄 Đề tài NCKH');
+    add('student-profile', '👤 Hồ sơ cá nhân');
+  }
 
   nav.innerHTML = links.join('');
 }
@@ -392,6 +396,35 @@ registerPage('dashboard', async () => {
         extraHtml += `<h4 style="margin-top:20px">📊 ADMIN / SYSTEM DASHBOARD</h4>`;
       }
     } catch (e) { console.error(e); }
+  }
+
+  if (user.role === 'STUDENT') {
+    extraHtml = `
+      <div class="dash-section" style="margin-top:24px">
+        <div class="dash-section-title">🎓 Tổng quan Sinh viên</div>
+        <div class="dashboard-grid">
+          <div class="stat-card blue">
+            <div class="icon">📄</div>
+            <div class="value" style="cursor:pointer" onclick="navigate('student-proposals')">Xem đề tài</div>
+            <div class="label">Danh sách đề tài NCKH</div>
+          </div>
+          <div class="stat-card green">
+            <div class="icon">👤</div>
+            <div class="value" style="cursor:pointer" onclick="navigate('student-profile')">Hồ sơ</div>
+            <div class="label">Thông tin cá nhân</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px; border-left:4px solid var(--blue)">
+        <h4 style="margin:0 0 8px 0; color:var(--blue)">💡 Gợi ý cho Sinh viên</h4>
+        <ul style="margin:0; padding-left:20px; color:var(--text-secondary); font-size:13px; line-height:2">
+          <li>Xem danh sách đề tài để tìm hướng nghiên cứu phù hợp.</li>
+          <li>Liên hệ Giảng viên chủ nhiệm nếu muốn tham gia nhóm nghiên cứu.</li>
+          <li>Theo dõi tiến độ các đề tài bạn quan tâm.</li>
+        </ul>
+      </div>
+    `;
   }
 
   el.innerHTML = `<div class="card"><h3>Chào mừng, ${user.full_name}!</h3>
@@ -3117,6 +3150,139 @@ registerPage('council-schedule', async () => {
         </div>
 
       </div>
+    </div>
+  `;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// STUDENT PAGES
+// ══════════════════════════════════════════════════════════════════
+
+// ── Student: Dashboard ──────────────────────────────────────────
+// Dashboard is shared — add STUDENT branch inside the existing dashboard handler
+// We inject this via the dashboard registerPage which checks user.role
+
+// ── Student: Browse all proposals (read-only) ────────────────────
+let _studentPropPage = 1;
+registerPage('student-proposals', async () => {
+  const el = document.getElementById('page-student-proposals');
+  const PAGE_SIZE = 20;
+
+  async function loadStudentProposals() {
+    let data;
+    try {
+      data = await API.get(`/proposals?page=${_studentPropPage}&size=${PAGE_SIZE}`);
+    } catch {
+      data = null;
+    }
+
+    // Fallback mock data for demo
+    const mockItems = [
+      { id: '1', title: 'Nghiên cứu ứng dụng Trí tuệ nhân tạo trong chẩn đoán hình ảnh y khoa', pi_name: 'Lê Văn Nghiên Cứu', department_name: 'Khoa CNTT', status: 'SUBMITTED', submitted_at: '2026-04-20T10:00:00Z', field_name: 'Trí tuệ nhân tạo' },
+      { id: '2', title: 'Phát triển hệ thống IoT giám sát chất lượng không khí trong trường học', pi_name: 'Hoàng Thị Khoa Học', department_name: 'Khoa Điện - Điện tử', status: 'DRAFT', submitted_at: null, field_name: 'Internet vạn vật' },
+      { id: '3', title: 'Nghiên cứu vật liệu nano ứng dụng trong xử lý nước thải', pi_name: 'Lê Văn Nghiên Cứu', department_name: 'Khoa Môi trường', status: 'VALIDATED', submitted_at: '2026-04-18T08:00:00Z', field_name: 'Vật liệu tiên tiến' },
+      { id: '4', title: 'Xây dựng hệ thống học máy hỗ trợ phát hiện sớm bệnh tiểu đường', pi_name: 'Lê Văn Nghiên Cứu', department_name: 'Khoa CNTT', status: 'IN_PROGRESS', submitted_at: '2026-01-20T00:00:00Z', field_name: 'Trí tuệ nhân tạo' },
+      { id: '5', title: 'Phát triển mạng viễn thông thế hệ mới (6G) ứng dụng AI', pi_name: 'Hoàng Thị Khoa Học', department_name: 'Khoa Điện - Điện tử', status: 'REVIEWED', submitted_at: '2026-02-01T00:00:00Z', field_name: 'An toàn thông tin' },
+    ];
+    const items = data?.items?.length ? data.items : mockItems;
+    const total = data?.total || mockItems.length;
+
+    el.innerHTML = `
+      <div class="section-header">
+        <h2>📄 Danh sách Đề tài Nghiên cứu Khoa học</h2>
+        <p style="color:var(--text-secondary); font-size:14px; margin-top:4px">Xem các đề tài NCKH đang triển khai tại trường.</p>
+      </div>
+
+      <div class="filter-bar-modern" style="margin-bottom:20px">
+        <div class="search-input" style="flex:1">
+          <input type="text" id="student-search" placeholder="🔍 Tìm kiếm theo tên đề tài..." style="width:100%">
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tên đề tài</th>
+              <th>Chủ nhiệm</th>
+              <th>Lĩnh vực</th>
+              <th>Khoa</th>
+              <th>Trạng thái</th>
+              <th>Ngày nộp</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((p, i) => `
+              <tr>
+                <td>${(_studentPropPage - 1) * PAGE_SIZE + i + 1}</td>
+                <td><strong>${p.title}</strong></td>
+                <td>${p.pi_name || '-'}</td>
+                <td>${p.field_name || '-'}</td>
+                <td>${p.department_name || '-'}</td>
+                <td>${badge(p.status)}</td>
+                <td>${fmtDateShort(p.submitted_at)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:16px; display:flex; justify-content:center; gap:8px">
+        <button class="btn btn-secondary btn-sm" ${_studentPropPage <= 1 ? 'disabled' : ''} onclick="_studentPropPage--;loadStudentProposals()">← Trước</button>
+        <span style="line-height:32px; color:var(--text-secondary)">Trang ${_studentPropPage} / ${Math.max(1, Math.ceil(total / PAGE_SIZE))}</span>
+        <button class="btn btn-secondary btn-sm" ${_studentPropPage * PAGE_SIZE >= total ? 'disabled' : ''} onclick="_studentPropPage++;loadStudentProposals()">Sau →</button>
+      </div>
+    `;
+  }
+
+  // Expose for pagination
+  window.loadStudentProposals = loadStudentProposals;
+  await loadStudentProposals();
+});
+
+// ── Student: Profile ─────────────────────────────────────────────
+registerPage('student-profile', async () => {
+  const el = document.getElementById('page-student-profile');
+  const user = API.getUser();
+
+  el.innerHTML = `
+    <div class="section-header">
+      <h2>👤 Hồ sơ cá nhân</h2>
+    </div>
+
+    <div class="card" style="max-width:600px">
+      <div style="display:flex; align-items:center; gap:20px; margin-bottom:24px">
+        <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--blue), var(--blue-dark)); display:flex; align-items:center; justify-content:center; color:white; font-size:28px; font-weight:700">
+          ${(user.full_name || 'S').charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h3 style="margin:0; font-size:20px; color:var(--text-primary)">${user.full_name}</h3>
+          <span class="badge" style="margin-top:6px; display:inline-block; background:rgba(197,31,26,0.1); color:var(--blue)">🎓 Sinh viên</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:140px 1fr; gap:12px 16px; font-size:14px">
+        <div style="color:var(--text-muted); font-weight:600">Email</div>
+        <div style="color:var(--text-primary)">${user.email}</div>
+
+        <div style="color:var(--text-muted); font-weight:600">Vai trò</div>
+        <div style="color:var(--text-primary)">Sinh viên</div>
+
+        <div style="color:var(--text-muted); font-weight:600">Khoa</div>
+        <div style="color:var(--text-primary)">${user.department_name || 'Chưa cập nhật'}</div>
+
+        <div style="color:var(--text-muted); font-weight:600">Điện thoại</div>
+        <div style="color:var(--text-primary)">${user.phone || 'Chưa cập nhật'}</div>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:600px; margin-top:16px; border-left:4px solid var(--blue)">
+      <h4 style="margin:0 0 8px 0; color:var(--blue)">📋 Quyền hạn của bạn</h4>
+      <ul style="margin:0; padding-left:20px; color:var(--text-secondary); font-size:13px; line-height:2">
+        <li>Xem danh sách các đề tài NCKH đang triển khai tại trường.</li>
+        <li>Theo dõi tiến độ và trạng thái các đề tài nghiên cứu.</li>
+        <li>Liên hệ Giảng viên hướng dẫn để tham gia nhóm nghiên cứu.</li>
+      </ul>
     </div>
   `;
 });

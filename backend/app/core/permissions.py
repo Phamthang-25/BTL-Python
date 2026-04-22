@@ -9,6 +9,7 @@ class RoleEnum(str, Enum):
     LEADERSHIP = "LEADERSHIP"
     FACULTY = "FACULTY"
     REVIEWER = "REVIEWER"
+    STUDENT = "STUDENT"
 
 
 class Permission(str, Enum):
@@ -58,6 +59,10 @@ RBAC_MATRIX = {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_PROPOSALS,
         Permission.REVIEW_PROPOSAL,
+    },
+    RoleEnum.STUDENT: {
+        Permission.VIEW_DASHBOARD,
+        Permission.VIEW_PROPOSALS,
     },
 }
 
